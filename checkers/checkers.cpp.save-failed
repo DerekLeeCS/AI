@@ -1,0 +1,1223 @@
+#include "checkers.h"
+#include <iostream>
+#include <list>
+#include <limits>
+#include <algorithm>
+#include <cstdlib>
+#include <windows.h>
+///////////////////////////////////count pieces
+using std::make_tuple;
+using std::get;
+using std::tie;
+using std::remove;
+using std::make_shared;
+using std::list;
+using std::cin;
+using std::cout;
+using std::endl;
+
+using namespace pieceVals;
+
+#define FOREGROUND_CYAN		        (FOREGROUND_BLUE | FOREGROUND_GREEN)
+#define FOREGROUND_MAGENTA		    (FOREGROUND_RED | FOREGROUND_BLUE)
+#define FOREGROUND_WHITE   	        (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN)
+
+
+///////////////////////////////////// Colored Output /////////////////////////////////////
+
+// Code found from
+// https://stackoverflow.com/questions/25559077/how-to-get-background-color-back-to-previous-color-after-use-of-std-handle
+void SetConsoleColour(WORD* Attributes, DWORD Colour)
+{
+    CONSOLE_SCREEN_BUFFER_INFO Info;
+    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    GetConsoleScreenBufferInfo(hStdout, &Info);
+    *Attributes = Info.wAttributes;
+    SetConsoleTextAttribute(hStdout, Colour);
+}
+
+void ResetConsoleColour(WORD Attributes)
+{
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), Attributes);
+}
+
+
+
+///////////////////////////////////// Piece /////////////////////////////////////
+
+// Declaration constructor
+board::piece::piece()
+{
+
+}
+
+// Regular constructor
+board::piece::piece( bool color, int type )
+{
+    this->color = color;
+    this->type = type;
+    filler = false;
+}
+
+// Filler constructor
+board::piece::piece( bool filler )
+{
+    this->filler = filler;
+}
+
+
+void board::piece::clearPiece(board &owner)
+{
+    int row,col;
+    tie(row,col) = this->loc;
+
+    if( this->validMove )
+    {
+        if( this->color == COLOR_RED_VAL )
+            owner.redMoves.erase(owner.gameboard[row][col]);
+        else
+            owner.whiteMoves.erase(owner.gameboard[row][col]);
+    }
+    if( this->validJump )
+    {
+        if( this->color == COLOR_RED_VAL )
+            owner.redJumps.erase(owner.gameboard[row][col]);
+        else
+            owner.whiteJumps.erase(owner.gameboard[row][col]);
+    }
+}
+
+
+void board::piece::resetPiece()
+{
+    this->validMove = false;
+    this->validJump = false;
+
+    this->moves.clear();
+    this->jumps.clear();
+}
+
+
+///////////////////////////////////// Board /////////////////////////////////////
+
+// Creates the default board
+board::board()
+{
+    tuple<int,int> tempTuple;
+    emptyPiece = make_shared<piece> ( piece(0,2) );
+    fillerPiece = make_shared<piece> ( piece(1) );
+
+    for(int i=0; i<8; i++)
+    {
+        for(int j=0; j<8; j++)
+        {
+            tempTuple = make_tuple(i,j);
+
+            if(i <= 2)
+            {
+                if( (i+j) % 2 )
+                {
+                    gameboard[i][j] = make_shared<piece> ( piece(0,0) ); // Red Man
+                    gameboard[i][j]->loc = tempTuple;
+                    //cout << get<0>(tempTuple) << " " << get<1>(tempTuple) << endl;
+                    redPieces.insert( gameboard[i][j] );
+                }
+                else
+                    gameboard[i][j] = fillerPiece; // Filler
+            }
+            else if(i >= 5)
+            {
+                if( (i+j) % 2 )
+                {
+                    gameboard[i][j] = make_shared<piece> ( piece(1,0) ); // White Man
+                    gameboard[i][j]->loc = tempTuple;
+                    whitePieces.insert( gameboard[i][j] );
+                }
+                else
+                    gameboard[i][j] = fillerPiece; // Filler
+            }
+            else
+            {
+                if( (i+j) % 2 )
+                    gameboard[i][j] = emptyPiece;
+                else
+                    gameboard[i][j] = fillerPiece; // Filler
+            }
+        }
+    }
+
+    redMen = 12;
+    whiteMen = 12;
+    redLast = 4;
+    whiteLast = 4;
+}
+
+
+void board::computerMove()
+{
+    int jumpLen;
+    unordered_set< shared_ptr<piece> > *possibleMoves;
+
+    if(redTurn)
+    {
+        jumpLen = redJumps.size();
+
+        if( jumpLen == 0 )
+            possibleMoves = &redMoves;
+        else
+            possibleMoves = &redJumps;
+    }
+    else
+    {
+        jumpLen = whiteJumps.size();
+
+        if( jumpLen == 0 )
+            possibleMoves = &whiteMoves;
+        else
+            possibleMoves = &whiteJumps;
+    }
+
+    redTurn = !redTurn;
+    turnCount++;
+}
+
+
+void board::playerMove()
+{
+    bool validPiece = false;
+    unordered_set< shared_ptr<piece> > possibleMoves;
+    tuple<int,int> tempLoc;
+    string input;
+    int jumpLen,row,col;
+
+    printBoard();
+
+    while( !validPiece )
+    {
+        cout << "Select a piece to move:" << endl;
+
+        jumpLen = whiteJumps.size();
+
+        if( jumpLen == 0 )
+            possibleMoves = whiteMoves;
+        else
+            possibleMoves = whiteJumps;
+
+        // Cleans up the list for the player///////////////////////////////////////////////////
+        //possibleMoves.sort();
+
+        for(auto iter : possibleMoves)
+        {
+            tempLoc = iter->loc;
+            cout << char( get<0>(tempLoc) + 97 ) << get<1>(tempLoc) + 1 << " ";
+        }
+
+        cout << "\n" << endl;
+
+
+        cin >> input;
+        cout << endl;
+
+        if( validateInput() )
+            continue;
+
+        if(input == "help")
+        {
+            printHelp();
+            continue;
+        }
+        else if(input == "board")
+        {
+            printBoard();
+            continue;
+        }
+
+        row = int(input[0]) - 97;
+        col = input[1] - '1';
+
+        if( possibleMoves.find(gameboard[row][col]) != possibleMoves.end() ) // Input is valid
+            validPiece = true;
+
+        if( !validPiece )
+            printMoveError();
+    }
+
+    bool multiJump = true;
+    bool validAction = false;
+    piece tempPiece = *gameboard[row][col];
+    list< tuple<int,int> > possibleActions;
+    string userInput;
+    tuple<int,int> tempTuple;
+
+    while(multiJump)
+    {
+        while( !validAction )
+        {
+            cout << "Select a valid move:" << endl;
+
+            if( jumpLen == 0 )
+                possibleActions = tempPiece.moves;
+            else
+                possibleActions = tempPiece.jumps;
+
+            for(auto iter : possibleActions)
+                cout << char(get<0>(iter) + 97) << get<1>(iter)+1 << "  ";
+
+            cout << "\n" << endl;
+            cin >> userInput;
+            cout << endl;
+
+            if( validateInput() )
+                continue;
+
+            if(userInput == "help")
+            {
+                printHelp();
+                continue;
+            }
+            else if(userInput == "board")
+            {
+                printBoard();
+                continue;
+            }
+
+            tempTuple = make_tuple( int(userInput[0]) - 97, (userInput[1] - '1') );
+
+            // Checks if move was in the list of actions
+            for(auto iter : possibleActions)
+            {
+                if( iter == tempTuple )
+                    validAction = true;
+            }
+
+            ////////////////////////
+
+            if( !validAction )
+                printMoveError();
+        }
+        tuple<int,int> oldLoc = make_tuple(row,col);
+        if(jumpLen == 0)
+            multiJump = false;
+        multiJump = moveResult(oldLoc, tempTuple, multiJump);
+        printBoard();
+    }
+    redTurn = !redTurn;
+    turnCount++;
+}
+
+
+/////////////// remove from moveList/ jump list update validmove jump
+// Performs a specified move
+bool board::moveResult(tuple<int,int> location, tuple<int,int> destination, bool jump)
+{
+    int oldRow,oldCol,newRow,newCol;
+    tie(oldRow,oldCol) = location;
+    tie(newRow,newCol) = destination;
+
+    gameboard[newRow][newCol] = gameboard[oldRow][oldCol];
+    gameboard[newRow][newCol]->loc = destination;
+    gameboard[newRow][newCol]->resetPiece();
+    gameboard[oldRow][oldCol]->clearPiece(*this);
+    gameboard[oldRow][oldCol] = emptyPiece;
+    if(jump)
+    {
+        int jumpRow = oldRow + (newRow-oldRow)/2;
+        int jumpCol = oldCol + (newCol-oldCol)/2;
+        gameboard[jumpRow][jumpCol]->clearPiece(*this);
+        /*
+        if( gameboard[jumpRow][jumpCol]->validMove )
+        {
+            if( gameboard[jumpRow][jumpCol]->color == COLOR_RED_VAL )
+                redMoves.erase(gameboard[jumpRow][jumpCol]);
+            else
+                whiteMoves.erase(gameboard[jumpRow][jumpCol]);
+        }
+        if( gameboard[jumpRow][jumpCol]->validJump )
+        {
+            if( gameboard[jumpRow][jumpCol]->color == COLOR_RED_VAL )
+                redJumps.erase(gameboard[jumpRow][jumpCol]);
+            else
+                whiteJumps.erase(gameboard[jumpRow][jumpCol]);
+        }*/
+        gameboard[jumpRow][jumpCol] = emptyPiece;
+    }
+
+    checkDiagMoves(gameboard[newRow][newCol], location, jump);
+    checkMoves(gameboard[newRow][newCol]);
+    if( gameboard[newRow][newCol]->validJump )
+        return true;
+    else
+        return false;
+
+}
+
+
+// Checks moves of a specific piece
+void board::checkMoves(shared_ptr<piece> &curPiece)
+{
+    int row,col;
+    tie(row,col) = curPiece->loc;
+    //cout << row << " " << col << endl;
+
+    piece tempPiece;
+    tuple<int,int> tempTuple;
+
+    int rowOffset = 1;
+    int colOffset = 1;
+
+    if( curPiece->color == COLOR_WHITE_VAL )
+        rowOffset *= -1;
+
+    int newRow,newCol;
+    int jumpRow,jumpCol;
+
+    bool canMove = false;
+    bool canJump = false;
+
+    for(int i=0; i<2; i++)
+    {
+        for(int j=0; j<2; j++)
+        {
+            newRow = row + rowOffset;
+            newCol = col + colOffset;
+
+            if( validLoc(newRow) && validLoc(newCol) )
+            {
+                tempPiece = *gameboard[newRow][newCol];
+
+                // Check for moves
+                if( tempPiece.type == TYPE_EMPTY_VAL )
+                {
+                    tempTuple = make_tuple(newRow,newCol);
+                    curPiece->moves.push_back(tempTuple);
+                    canMove = true;
+                }
+                // Check for jumps
+                else if( curPiece->color != tempPiece.color )
+                {
+                    jumpRow = row + 2*rowOffset;
+                    jumpCol = col + 2*colOffset;
+
+                    tempPiece = *gameboard[jumpRow][jumpCol];
+
+                    if( tempPiece.type == TYPE_EMPTY_VAL )
+                    {
+                        if( validLoc(jumpRow) && validLoc(jumpCol) )
+                        {
+                            tempTuple = make_tuple(jumpRow,jumpCol);
+                            curPiece->jumps.push_back(tempTuple);
+                            canJump = true;
+                        }
+                    }
+                }
+            }
+            colOffset *= -1;
+        }
+        if( curPiece->type != TYPE_KING_VAL )
+            break;
+
+        rowOffset *= -1;
+    }
+
+    if(canMove)
+    {
+        if( curPiece->validMove == false ) // If not in Move vector
+        {
+            curPiece->validMove = true;
+
+            if( curPiece->color == COLOR_RED_VAL )
+                redMoves.insert(gameboard[row][col]);
+            else
+                whiteMoves.insert(gameboard[row][col]);
+        }
+    }
+    if(canJump)
+    {
+        if( curPiece->validJump == false ) // If not in Jump vector
+        {
+            curPiece->validJump = true;
+
+            if( curPiece->color == COLOR_RED_VAL )
+                redJumps.insert(gameboard[row][col]);
+            else
+                whiteJumps.insert(gameboard[row][col]);
+        }
+    }
+}
+
+
+// Checks moves of pieces affected by curPiece's move
+void board::checkDiagMoves(shared_ptr<piece> &curPiece, tuple<int,int> oldLoc, bool jump)
+{
+    int oldRow,oldCol,newRow,newCol,tempRow,tempCol,row,col,jumpRow,jumpCol;
+    tie(oldRow,oldCol) = oldLoc;
+    tuple<int,int> newLoc = curPiece->loc;
+    tie(newRow,newCol) = newLoc;
+
+    piece tempPiece,jumpPiece;
+    tuple<int,int> curLoc = oldLoc;
+
+    int rowOffset = 1;
+    int colOffset = 1;
+
+    row = oldRow;
+    col = oldCol;
+
+    // Update pieces around old square
+    for(int loop=0; loop<(1+jump); loop++)
+    {
+        for(int i=0; i<2; i++)
+        {
+            for(int j=0; j<2; j++)
+            {
+                tempRow = row + rowOffset;
+                tempCol = col + colOffset;
+
+                if( validLoc(tempRow) && validLoc(tempCol) )
+                {
+                    if( tempRow == newRow && tempCol == newCol ) // Ensure no duplicate moves
+                        continue;
+
+                    tempPiece = *gameboard[tempRow][tempCol];
+
+                    if( tempPiece.type == TYPE_EMPTY_VAL )
+                        continue;
+
+                    tempPiece.moves.push_back(curLoc);
+
+                    if( tempPiece.validMove == false )
+                    {
+                        tempPiece.validMove = true;
+                        if( tempPiece.color == COLOR_RED_VAL )
+                            redMoves.insert(gameboard[tempRow][tempCol]);
+                        else
+                            whiteMoves.insert(gameboard[tempRow][tempCol]);
+                    }
+
+                    jumpRow = row + 2*rowOffset;
+                    jumpCol = col + 2*colOffset;
+
+                    if( validLoc(jumpRow) && validLoc(jumpCol) )
+                    {
+                        if( jumpRow == newRow && jumpCol == newCol ) // Ensure no duplicate moves
+                            continue;
+
+                        jumpPiece = *gameboard[jumpRow][jumpCol];
+
+                        if( jumpPiece.type == TYPE_EMPTY_VAL )
+                            continue;
+
+                        if( jumpPiece.color != tempPiece.color )
+                        {
+                            tempPiece.jumps.push_back(curLoc);
+
+                            if( jumpPiece.validJump == false )
+                            {
+                                jumpPiece.validJump = true;
+                                if( jumpPiece.color == COLOR_RED_VAL )
+                                    redJumps.insert(gameboard[jumpRow][jumpCol]);
+                                else
+                                    whiteJumps.insert(gameboard[jumpRow][jumpCol]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if(jump)
+        {
+            row += (newRow - oldRow)/2;
+            col += (newCol - oldCol)/2;
+            curLoc = make_tuple(row,col);
+        }
+    }
+
+    // Update pieces around new square
+    rowOffset = 1;
+    colOffset = 1;
+
+    row = newRow;
+    col = newCol;
+    curLoc = newLoc;
+
+    for(int i=0; i<2; i++)
+    {
+        for(int j=0; j<2; j++)
+        {
+            tempRow = row + rowOffset;
+            tempCol = col + colOffset;
+
+            if( validLoc(tempRow) && validLoc(tempCol) )
+            {
+                tempPiece = *gameboard[tempRow][tempCol];
+
+                if( tempPiece.type == TYPE_EMPTY_VAL )
+                    continue;
+
+                if( tempPiece.validMove == true )
+                {
+                    auto tempIter = find(tempPiece.moves.begin(), tempPiece.moves.end(), curLoc);
+
+                    if( tempIter != tempPiece.moves.end() ) // If tuple is found
+                    {
+                        tempPiece.moves.erase(tempIter);
+                        if( tempPiece.moves.empty() )
+                        {
+                            if( tempPiece.color == COLOR_RED_VAL )
+                                redMoves.erase(gameboard[tempRow][tempCol]);
+                            else
+                                whiteMoves.erase(gameboard[tempRow][tempCol]);
+                        }
+                    }
+                }
+
+                jumpRow = row + 2*rowOffset;
+                jumpCol = col + 2*colOffset;
+
+                if( validLoc(jumpRow) && validLoc(jumpCol) )
+                {
+                    jumpPiece = *gameboard[jumpRow][jumpCol];
+
+                    if( jumpPiece.type == TYPE_EMPTY_VAL )
+                        continue;
+
+                    if( jumpPiece.color != tempPiece.color )
+                    {
+                        tempPiece.jumps.remove(curLoc);
+                        if( tempPiece.jumps.empty() )
+                        {
+                            if( tempPiece.color == COLOR_RED_VAL )
+                                redJumps.erase(gameboard[jumpRow][jumpCol]);
+                            else
+                                whiteJumps.erase(gameboard[jumpRow][jumpCol]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+bool board::countUpdate(string location, bool isNew)
+{
+    /*
+    if gameboard[i][j] == 1:
+    # Gives more points to corner pieces when at a piece disadvantage
+    if i+j == 1 or i+j == 13:
+      whiteCorner += 1
+    if (i == 0 and j == 7) or (i == 7 and j == 0):
+      whiteCorner += 1
+
+    whiteClosest += kingValue + closestPiece(gameboard, i, j)
+    whiteKing += 1
+    whiteCount += 1
+    #print(closestPiece(gameboard, i, j))
+    elif gameboard[i][j] == 2:
+    whiteScore += ( menValue + ((i/2)**2)/2 ) # Favors men getting closer to king
+    whiteCount += 1
+    if i == 0:
+      whiteLast += 1
+    elif gameboard[i][j] == 3:
+    redScore += ( menValue + (((7-i)/2)**2)/2 ) # Favors men getting closer to king
+    redCount += 1
+    if i == 7:
+      redLast += 1
+    elif gameboard[i][j] == 4:
+    # Gives more points to corner pieces when at a piece disadvantage
+    if i+j == 1 or i+j == 13:
+      redCorner += 1
+    if (i == 0 and j == 7) or (i == 7 and j == 0):
+      redCorner += 1
+    redClosest += kingValue + closestPiece(gameboard, i, j)
+    redKing += 1
+    redCount += 1
+    #print(closestPiece(gameboard, i, j))
+    */
+}
+
+
+float board::heuristic()
+{
+    int whiteCount = whiteMen + whiteKings;
+    int redCount = redMen + redKings;
+
+    ////////// Terminal State Check //////////
+    if( redCount == 0 )
+        return 10000;  // White Victory
+    else if( whiteCount == 0 )
+        return -10000; // Red Victory
+
+    if(turnCount % 2 == redTurn) /////////////////////////////////// if(redTurn) -> !redTurn
+    {
+        if( redMoves.size() + redJumps.size() == 0 )
+          return 9999;  // White Victory
+    }
+    else
+    {
+        if(whiteMoves.size() + whiteJumps.size() == 0 )
+          return -9999; // Red Victory
+    }
+
+
+    ////////// Score Calculation //////////
+
+    // Scores
+    float score = 0;
+    float whiteScore = 0;
+    float redScore = 0;
+    float menValue = 30;
+    float kingValue = 50;
+    float lastRowVal = 5; // Favors keeping men on the last row (to block oppoent's pieces)
+    float whiteClosest = 0; // Score for kings based on how close they are to enemy pieces
+    float redClosest = 0;
+    float cornerScore = 15; // Additional score added for corner pieces
+
+
+    whiteScore += whiteMen * menValue;
+    whiteScore += whiteKings * kingValue;
+    redScore += redMen * menValue;
+    redScore += redKings * kingValue;
+
+    // Only favors last row men if there are at least 6 pieces left
+    if(whiteCount >= 6)
+        whiteScore += whiteLast * lastRowVal;
+    if(redCount >= 6)
+        redScore += redLast * lastRowVal;
+
+    // Favors fewer pieces if in lead
+    // Favors king getting closer if in the lead
+    if(whiteCount > 0 && redCount > 0)
+    {
+        if(whiteCount > redCount) // White advantage
+        {
+          whiteScore += ( 2*(whiteCount/redCount) )^2;
+          whiteScore += 2*whiteClosest;
+          redScore += redClosest;
+          redScore += redCorner * cornerScore;
+        }
+        else if(redCount > whiteCount) // Red Advantage
+        {
+          redScore += ( 2*(redCount/whiteCount) )^2;
+          redScore += 2*redClosest;
+          whiteScore += whiteClosest;
+          whiteScore += whiteCorner * cornerScore;
+        }
+        else // Even game
+        {
+          redScore += redClosest;
+          whiteScore += whiteClosest;
+        }
+    }
+
+    score = whiteScore - redScore;
+
+    // print(redScore, whiteScore)
+
+    return score;
+}
+
+
+// Prints the start menu
+void board::printStart()
+{
+    bool start = false;
+    bool validOption;
+    int option;
+
+    cout << "\n";
+    cout << "******************** Checkers ********************" << "\n" << "\n";
+    cout << "Welcome!" << "\n";
+    cout << "You play White." << "\n" << "\n";
+
+    while( !start )
+    {
+        cout << "1 = Start" << "\n";
+        cout << "2 = Settings" << "\n";
+        cout << "3 = Quit Game" << "\n" << endl;
+
+        validOption = false;
+        option = 0;
+
+        while( !validOption )
+        {
+            cin >> option;
+            cout << endl;
+
+            if( validateInput() )
+                continue;
+
+            if( 1 <= option && option <= 3 )
+                validOption = true;
+
+            if( !validOption )
+                printError();
+        }
+
+        if( option == 1 )
+            start = true;
+        else if( option == 2 )
+            printSettings();
+        else if( option == 3 )
+        {
+            cout << "Bye!" << endl;
+            exit( EXIT_SUCCESS );
+        }
+    }
+
+    for(auto iter : redPieces)
+        checkMoves(iter);
+    for(auto iter : whitePieces)
+        checkMoves(iter);
+}
+
+
+void board::printSettings()
+{
+    bool validOption = false;
+    int option = 0;
+
+    cout << "1 = Change player settings" << "\n";
+    cout << "2 = Change starting board" << "\n";
+    cout << "3 = Change computing time (Current: " << computerTime << " seconds)" << "\n";
+    cout << "4 = Back" << "\n" << endl;
+
+    while( !validOption )
+    {
+        cin >> option;
+        cout << endl;
+
+        if( validateInput() )
+            continue;
+
+        if( 1 <= option && option <= 4 )
+            validOption = true;
+
+        if( !validOption )
+            printError();
+    }
+
+    if( option == 1 )
+        printPlayerSettings();
+    else if( option == 2 )
+        printPieceSettings();
+    else if( option == 3 )
+        printTimeSettings();
+    else if( option == 4 )
+        return;
+}
+
+
+void board::printPlayerSettings()
+{
+    bool validOption;
+    int option;
+
+    while(1)
+    {
+        validOption = false;
+        option = 0;
+
+        cout << "1 = Red Goes First" << "\n";
+        cout << "2 = White Goes First" << "\n";
+        cout << "3 = Player vs. Computer" << "\n";
+        cout << "4 = Computer vs. Computer" << "\n";
+        cout << "5 = Back" << "\n" << "\n";
+
+        cout << "Current Settings: ";
+        if(redTurn)
+            cout << "1";
+        else
+            cout << "2";
+
+        cout << " & ";
+
+        if(AIvsAI)
+            cout << "4";
+        else
+            cout << "3";
+
+        cout << "\n" << endl;
+
+        while( !validOption )
+        {
+            cin >> option;
+            cout << endl;
+
+            if( validateInput() )
+                continue;
+
+            if( 1 <= option && option <= 5 )
+                validOption = true;
+
+            if( !validOption )
+                printError();
+        }
+
+        if( option == 1 )
+            redTurn = true;
+        else if( option == 2 )
+            redTurn = false;
+        else if( option == 3 )
+            AIvsAI = false;
+        else if( option == 4 )
+            AIvsAI = true;
+        else if( option == 5 )
+            return;
+    }
+}
+
+
+// Change starting board
+void board::printPieceSettings()
+{
+    bool validOption;
+    int option;
+
+    while(1)
+    {
+        validOption = false;
+        option = 0;
+
+        printBoard();
+        cout << "1 = Add a piece" << "\n";
+        cout << "2 = Remove a piece" << "\n";
+        cout << "3 = Back" << "\n" << endl;
+
+        while( !validOption )
+        {
+            cin >> option;
+            cout << endl;
+
+            if( validateInput() )
+                continue;
+
+            if( 1 <= option && option <= 3 )
+                validOption = true;
+
+            if( !validOption )
+                printError();
+        }
+
+        ////////////////////// Add a piece //////////////////////
+        if( option == 1 )
+            printAddPiece();
+            ////////////////////// Remove a piece //////////////////////
+        else if( option == 2 )
+            printRemovePiece();
+        else if( option == 3 )
+            return;
+    }
+}
+
+
+// Change computing time
+void board::printTimeSettings()
+{
+    int inputTime = 0;
+
+    cout << "Please enter a valid time in seconds:" << "\n";
+    cout << "(Only a postive integer greater than or equal to 5 will be accepted)" << "\n" << endl;
+
+    while(inputTime < 5)
+    {
+        cin >> inputTime;
+        cout << endl;
+
+        if( validateInput() )
+            continue;
+
+        if(inputTime < 5)
+            printError();
+        else
+          computerTime = inputTime;
+    }
+}
+
+
+////////////////////// add to lists and checkmoves
+void board::printAddPiece()
+{
+    int row,col;
+    string loc;
+    bool validSq = false;
+
+    cout << "Select an empty square: " << "\n";
+    cout << "(Any square with a '.')" << "\n";
+    cout << "(Format should be ColumnRow, e.g. a1)" << "\n" << endl;
+
+    while( !validSq )
+    {
+        cin >> loc;
+        cout << endl;
+
+        if( validateInput() )
+            continue;
+
+        row = int(loc[0]) - 97;
+        col = loc[1] - '1';
+
+        if( 0 <= col && col <= 7 && 0 <= row && row <= 7 )
+        {
+            if( gameboard[row][col]->filler == FILLER_FALSE && gameboard[row][col]->type == TYPE_EMPTY_VAL)
+                validSq = true;
+            else
+            {
+                cout << "Error: Invalid Square" << "\n" << endl;
+                continue;
+            }
+        }
+
+        if( !validSq )
+            printError();
+    }
+
+    int pieceType = 0;
+    bool validType = false;
+
+    cout << "Select a piece to add: " << "\n";
+    cout << "1 = White King" << "\n";
+    cout << "2 = White Man" << "\n";
+    cout << "3 = Red King" << "\n";
+    cout << "4 = Red Man" << "\n";
+    cout << "5 = Back" << "\n" << endl;
+
+    while( !validType )
+    {
+        cin >> pieceType;
+        cout << endl;
+
+        if( validateInput() )
+            continue;
+
+        if( 1 <= pieceType && pieceType <= 4 )
+        {
+            validType = true;
+            gameboard[row][col] = make_shared<piece> ( piece(pieceType<=2, pieceType%2) );
+        }
+        else if( pieceType == 5 )
+            return;
+    }
+}
+
+
+void board::printRemovePiece()
+{
+    int row,column;
+    string loc;
+    bool validSq = false;
+
+    cout << "Select an occupied square:" << "\n";
+    cout << "(Any square with a number)" << "\n";
+    cout << "(Format should be ColumnRow, e.g. b1)" << "\n" << endl;
+
+    while( !validSq )
+    {
+        cin >> loc;
+        cout << endl;
+
+        if( validateInput() )
+            continue;
+
+        row = int(loc[0]) - 97;
+        column = loc[1] - '1';
+
+        if( 0 <= column && column <= 7 && 0 <= row && row <= 7 )
+        {
+            if( gameboard[row][column]->filler == FILLER_FALSE && gameboard[row][column]->type != TYPE_EMPTY_VAL )
+            {
+                //delete gameboard[row][column].get();
+                updateRemove(*gameboard[row][column]);
+                gameboard[row][column] = emptyPiece;
+                //tuple<int,int> location = make_tuple(row,column);
+
+                validSq = true;
+
+                //tempPiece.type = TYPE_EMPTY_VAL;
+            }
+            else
+            {
+                cout << "Error: Invalid Square" << "\n" << endl;
+                continue;
+            }
+        }
+
+        if( !validSq )
+            printError();
+    }
+}
+
+
+void board::updateRemove(piece tempPiece)
+{/*
+    tuple<int,int> loc = tempPiece.loc;
+    if(tempPiece.validMove)
+    {
+        tempPiece.validMove = false;
+        if(tempPiece.color == COLOR_RED_VAL)
+            redMoves.erase( remove(redMoves.begin(),redMoves.end(),loc) );
+        else
+            whiteMoves.erase( remove(whiteMoves.begin(),whiteMoves.end(),loc) );
+    }
+    if(tempPiece.validJump)
+    {
+        tempPiece.validJump = false;
+        if(tempPiece.color == COLOR_RED_VAL)
+            redJumps.erase( remove(redJumps.begin(),redJumps.end(),loc) );
+        else
+            whiteJumps.erase( remove(whiteJumps.begin(),whiteJumps.end(),loc) );
+    }
+
+    if(tempPiece.color == COLOR_RED_VAL)
+        redPieces.erase( remove(redPieces.begin(),redPieces.end(),loc) );
+    else
+        whitePieces.erase( remove(whitePieces.begin(),whitePieces.end(),loc) );
+        */
+}
+
+
+// Prints the current board
+void board::printBoard()
+{
+    string man = "1";
+    string king = "2";
+
+    WORD Attributes = 0;
+
+    // Prints column labels
+    cout << "   ";
+    for(int i=0; i<8; i++)
+    {
+        SetConsoleColour(&Attributes, FOREGROUND_INTENSITY | FOREGROUND_GREEN);
+        cout << i+1 << "  ";
+        ResetConsoleColour(Attributes);
+    }
+    cout << endl;
+
+    piece tempPiece;
+
+    for(int i=0; i<8; i++)
+    {
+        // Prints row labels
+        SetConsoleColour(&Attributes, FOREGROUND_INTENSITY | FOREGROUND_GREEN);
+        cout << char(97+i) << "  ";
+        ResetConsoleColour(Attributes);
+
+        for(int j=0; j<8; j++)
+        {
+            tempPiece = *gameboard[i][j];
+            if( tempPiece.filler == FILLER_TRUE )
+                cout << "   ";
+            else
+            {
+                if( tempPiece.type == TYPE_MAN_VAL ) // Man
+                {
+                    if( tempPiece.color == COLOR_RED_VAL ) // Red
+                        SetConsoleColour(&Attributes, FOREGROUND_INTENSITY | FOREGROUND_RED);
+                    else if( tempPiece.color == COLOR_WHITE_VAL ) // White
+                        SetConsoleColour(&Attributes, FOREGROUND_WHITE);
+
+                    cout << man << "  ";
+                }
+                else if( tempPiece.type == TYPE_KING_VAL ) // King
+                {
+                    if( tempPiece.color == COLOR_RED_VAL ) // Red
+                        SetConsoleColour(&Attributes, FOREGROUND_INTENSITY | FOREGROUND_RED);
+                    else if( tempPiece.color == COLOR_WHITE_VAL ) // White
+                        SetConsoleColour(&Attributes, FOREGROUND_WHITE);
+
+                    cout << king << "  ";
+                }
+                if( tempPiece.type == TYPE_EMPTY_VAL ) // Empty
+                {
+                    SetConsoleColour(&Attributes, FOREGROUND_INTENSITY | FOREGROUND_CYAN);
+                    cout << "." << "  ";
+                }
+
+                ResetConsoleColour(Attributes);
+            }
+        }
+        cout << "\n";
+    }
+    cout << endl;
+}
+
+
+// Prints the available moves for the player
+void board::printMoves()
+{
+    int row,col;
+
+    for(auto iter : whiteMoves)
+    {
+        tie(row,col) = iter->loc;
+        cout << char(row + 97) << col+1 << endl;
+    }
+    cout << endl;
+}
+
+// Prints a list of commands available
+void board::printHelp()
+{
+    cout << "###################### Help ######################" << endl;
+    cout << "Game Pieces:" << endl;
+    cout << "1 = Man" << endl;
+    cout << "2 = King" << endl;
+    cout << endl;
+
+    cout << "Move Descriptions:" << endl;
+    cout << "1 = Move Up Left" << endl;
+    cout << "2 = Move Up Right" << endl;
+    cout << "3 = Move Down Left" << endl;
+    cout << "4 = Move Down Right" << endl;
+    cout << "5 = Jump Up Left" << endl;
+    cout << "6 = Jump Up Right" << endl;
+    cout << "7 = Jump Down Left" << endl;
+    cout << "8 = Jump Down Right" << endl;
+    cout << "##################################################" << endl;
+    cout << endl << endl;
+}
+
+
+// Prints an error message
+void board::printError()
+{
+    cout << "Error: Invalid Input" << "\n" << endl;
+}
+
+
+// Prints an error message with help
+void board::printMoveError()
+{
+  cout << "Error: Invalid Input" << "\n";
+  cout << "Type 'help' to bring up the help menu." << "\n";
+  cout << "Type 'board' to see the board again." << "\n" << endl;
+}
+
+
+bool board::validateInput()
+{
+    if( cin.fail() )
+    {
+        cin.clear();
+        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        printError();
+        return true;
+    }
+    else
+        return false;
+}
+
+
+// Checks if a row/column is within the board
+// If valid, returns true; otherwise, returns false
+bool board::validLoc(int loc)
+{
+    if( 0 <= loc && loc <= 7)
+        return true;
+    else
+        return false;
+}
+
+
