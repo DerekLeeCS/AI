@@ -40,3 +40,27 @@
 	<windows.h>
 	<wincon.h>
 
+1597695058 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\main.cpp
+	"checkers.h"
+
+1597694717 d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.h
+	<string>
+	<list>
+	<vector>
+	<unordered_set>
+	<tuple>
+	<memory>
+
+1598054037 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.cpp
+	"checkers.h"
+	<iostream>
+	<list>
+	<set>
+	<algorithm>
+	<ctime>
+	<chrono>
+	<cstdlib>
+	<cmath>
+	<windows.h>
+	<wincon.h>
+

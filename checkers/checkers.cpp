@@ -466,7 +466,6 @@ float board::minimax(board &originalBoard, int depth, bool maxPlayer, float alph
 
     unordered_set< shared_ptr<piece> > *possibleMoves;
     possibleMoves = tempBoard.returnPieces();
-    //cout << possibleMoves->size() <<" ";
     unordered_set< shared_ptr<piece> > posMoves = *possibleMoves;
 
     list< tuple<int,int> > *possibleActions;
@@ -1676,6 +1675,8 @@ void board::printStart()
         }
     }
 
+    printTimeSettings();
+
     for(int i=0; i<8; i++)
     {
         for(int j=0; j<8; j++)
@@ -1705,8 +1706,7 @@ void board::printSettings()
 
     cout << "1 = Change player settings" << "\n";
     cout << "2 = Change starting board" << "\n";
-    cout << "3 = Change computing time (Current: " << computerTime << " seconds)" << "\n";
-    cout << "4 = Back" << "\n" << endl;
+    cout << "3 = Back" << "\n" << endl;
 
     while( !validOption )
     {
@@ -1716,7 +1716,7 @@ void board::printSettings()
         if( validateInput() )
             continue;
 
-        if( 1 <= option && option <= 4 )
+        if( 1 <= option && option <= 3 )
             validOption = true;
 
         if( !validOption )
@@ -1728,8 +1728,6 @@ void board::printSettings()
     else if( option == 2 )
         printPieceSettings();
     else if( option == 3 )
-        printTimeSettings();
-    else if( option == 4 )
         return;
 }
 
@@ -1826,10 +1824,8 @@ void board::printPieceSettings()
                 printError();
         }
 
-        ////////////////////// Add a piece //////////////////////
         if( option == 1 )
             printAddPiece();
-            ////////////////////// Remove a piece //////////////////////
         else if( option == 2 )
             printRemovePiece();
         else if( option == 3 )
