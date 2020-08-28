@@ -1549,8 +1549,9 @@ void board::heuristic()
     if(redCount >= 8)
         redScore += redLast * lastRowVal;
 
-    // Favors fewer pieces if in lead
-    // Favors king getting closer if in the lead
+    // Favors:
+        // Fewer pieces if in the lead
+        // King getting closer to enemy pieces if in the lead
     if(whiteCount > 0 && redCount > 0)
     {
         if(whiteCount > redCount) // White advantage
