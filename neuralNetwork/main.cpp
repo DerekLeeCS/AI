@@ -9,6 +9,7 @@ using std::list;
 using std::string;
 
 
+void returnInputs( list<string> &, int &, double & );
 string filePrompt( int );
 
 
@@ -18,6 +19,15 @@ int main() {
     list<string> fileNames;
     int epochs;
     double learnRate;
+
+    returnInputs( fileNames, epochs, learnRate );
+
+    return 0;
+}
+
+
+// Handles processing required inputs from user
+void returnInputs( list<string> &fileNames, int &epochs, double &learnRate ) {
 
     // Append filenames to list
     for ( int i=0; i<3; i++ )
@@ -31,10 +41,12 @@ int main() {
     cin >> learnRate;
     cout << "\n";
 
-    return 0;
+    return;
+
 }
 
-
+// Prompts the user for input files
+// Intended to iterate through caseNum from 0 to 2
 string filePrompt( int caseNum ) {
 
     string userPrompt, userInput;
