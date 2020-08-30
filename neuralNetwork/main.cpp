@@ -1,33 +1,95 @@
 #include <iostream>
-#include <list>
+#include <fstream>
+#include <vector>
 #include <string>
 
 
 using std::cin;
 using std::cout;
-using std::list;
+using std::ifstream;
+using std::ofstream;
+using std::vector;
 using std::string;
 
 
-void returnInputs( list<string> &, int &, double & );
+void returnInputs( vector<string> &, int &, double & );
 string filePrompt( int );
 
 
 int main() {
 
-    // List contains neuralFile, trainFile, outFile
-    list<string> fileNames;
+    // Input variables
+    vector<string> fileNames;   // Vector contains name of weight file, training file, output file
     int epochs;
     double learnRate;
 
+    // Gets inputs from user
     returnInputs( fileNames, epochs, learnRate );
+
+
+    //// Reads the file representing the initial neural network ////
+    ifstream inputWeights( fileNames[0] );
+
+    int numInNodes, numHidNodes, numOutNodes;
+    inputWeights >> numInNodes >> numHidNodes >> numOutNodes;
+
+    double inHidWeights[ numHidNodes ][ numInNodes + 1 ], hidOutWeights[ numOutNodes ][ numHidNodes + 1 ];   // Stores the weights of edges
+
+    // Reads weights of edges from input layer to hidden layer
+    for ( int i=0; i<numHidNodes; i++ ) {
+        for ( int j=0; j<numInNodes+1; j++ )
+            inputWeights >> inHidWeights[i][j];
+    }
+
+    // Reads weights of edges from hidden layer to output layer
+    for ( int i=0; i<numOutNodes; i++ ) {
+        for ( int j=0; j<numHidNodes+1; j++ )
+            inputWeights >> hidOutWeights[i][j];
+    }
+
+    inputWeights.close();
+
+
+    //// Reads the file representing the training set ////
+    ifstream inputTrain( fileNames[1] );
+
+    int numTrainEx, _checkInNodes, _checkOutNodes;
+    inputTrain >> numTrainEx >> _checkInNodes >> _checkOutNodes;
+
+    // Verify weight file matches training file
+    if ( numInNodes != _checkInNodes || numOutNodes != _checkOutNodes ) {
+
+        std::cerr << "Error: Number of nodes in weight file does not match number of nodes in training file! ("
+                  << numInNodes << "," << _checkInNodes << ") ("
+                  << numOutNodes << "," << _checkOutNodes << ")" << "\n";
+        return -1;
+
+    }
+
+    int inputAttributes[ numTrainEx ][ numInNodes ];
+    bool output[ numTrainEx ][ numOutNodes ];
+
+    // Reads input and output data
+    for ( int i=0; i<numTrainEx; i++ ) {
+
+        for ( int j=0; j<numInNodes; j++ )
+            inputTrain >> inputAttributes[i][j];
+
+        for ( int j=0; j<numOutNodes; j++ )
+            inputTrain >> output[i][j];
+
+    }
+
+    inputTrain.close();
+
+
 
     return 0;
 }
 
 
 // Handles processing required inputs from user
-void returnInputs( list<string> &fileNames, int &epochs, double &learnRate ) {
+void returnInputs( vector<string> &fileNames, int &epochs, double &learnRate ) {
 
     // Append filenames to list
     for ( int i=0; i<3; i++ )
@@ -74,3 +136,6 @@ string filePrompt( int caseNum ) {
     return userInput;
 
 }
+
+
+
