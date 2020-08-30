@@ -1,22 +1,42 @@
+#include "fileProcessing.h"
 #include <iostream>
-#include <fstream>
-#include <vector>
-#include <string>
+#include <cmath>
+
 
 
 using std::cin;
 using std::cout;
-using std::ifstream;
-using std::ofstream;
-using std::vector;
-using std::string;
+using std::tie;
 
 
+void trainProgram();
+void testProgram();
+double sig( double );
+double sigDeriv( double );
 void returnInputs( vector<string> &, int &, double & );
 string filePrompt( int );
 
 
 int main() {
+
+    bool test;
+
+    cout << "Enter 0 for the training program, or 1 for the testing program:" << "\n";
+    cin >> test;
+    cout << "\n"
+         << "---------------------------------------------------------------" << "\n";
+
+    if ( !test )
+        trainProgram();
+    else
+        testProgram();
+
+    return 0;
+}
+
+
+// Handles training the neural network
+void trainProgram() {
 
     // Input variables
     vector<string> fileNames;   // Vector contains name of weight file, training file, output file
@@ -26,8 +46,15 @@ int main() {
     // Gets inputs from user
     returnInputs( fileNames, epochs, learnRate );
 
+    // Reads the file representing the initial neural network
+    int numInNodes, numHidNodes, numOutNodes;
+    vector< vector<double> > inHidWeights, hidOutWeights;
 
-    //// Reads the file representing the initial neural network ////
+    tie( inHidWeights, hidOutWeights, numInNodes, numHidNodes, numOutNodes ) = loadNetwork( fileNames[0] );
+
+
+
+    /*
     ifstream inputWeights( fileNames[0] );
 
     int numInNodes, numHidNodes, numOutNodes;
@@ -48,7 +75,7 @@ int main() {
     }
 
     inputWeights.close();
-
+    */
 
     //// Reads the file representing the training set ////
     ifstream inputTrain( fileNames[1] );
@@ -62,7 +89,7 @@ int main() {
         std::cerr << "Error: Number of nodes in weight file does not match number of nodes in training file! ("
                   << numInNodes << "," << _checkInNodes << ") ("
                   << numOutNodes << "," << _checkOutNodes << ")" << "\n";
-        return -1;
+        return;
 
     }
 
@@ -83,9 +110,60 @@ int main() {
     inputTrain.close();
 
 
-
-    return 0;
+    return;
 }
+
+
+// Handles testing the neural network
+void testProgram() {
+
+
+
+}
+
+
+
+// Computes activation of a neuron given the activations of the previous layer and weights of connections
+double activation( double prevActivations[], double weights[] ) {
+
+    // Make sure both arrays are the same size
+    int numPrevNeurons = sizeof( prevActivations ) / sizeof( *prevActivations );
+
+    if ( numPrevNeurons != ( sizeof( weights ) / sizeof( *weights ) ) ) {
+
+        std::cerr << "Error: Size of previous layer and weights is not the same! ("
+                  << numPrevNeurons << "," << sizeof( weights ) / sizeof( *weights )
+                  << ")" << "\n";
+        return -1;
+
+    }
+
+    double neuronActivation = 0;
+
+    for ( int i=0; i<numPrevNeurons; i++ )
+        neuronActivation += prevActivations[i] * weights[i];
+
+    return neuronActivation;
+
+}
+
+
+
+// Sigmoid function to calculate output of perceptron
+double sig( double x ) {
+
+    return 1 / ( 1 + exp(-x) );
+
+}
+
+// Derivative of Sigmoid function used for updating weights
+double sigDeriv( double x ) {
+
+    return sig(x) * ( 1 - sig(x) );
+
+}
+
+
 
 
 // Handles processing required inputs from user
