@@ -5,11 +5,9 @@ void trainProgram();
 void testProgram();
 void returnInputs( vector<string> &, int &, double & );
 string filePrompt( int );
-
+bool test;
 
 int main() {
-
-    bool test;
 
     cout << "Enter 0 for the training program, or 1 for the testing program:" << "\n";
     cin >> test;
@@ -22,6 +20,7 @@ int main() {
         testProgram();
 
     return 0;
+
 }
 
 
@@ -39,69 +38,13 @@ void trainProgram() {
     // Reads the file representing the initial neural network
     NeuralNetwork newNetwork = NeuralNetwork( fileNames[0] );
 
-
-
-    /*
-    ifstream inputWeights( fileNames[0] );
-
-    int numInNodes, numHidNodes, numOutNodes;
-    inputWeights >> numInNodes >> numHidNodes >> numOutNodes;
-
-    double inHidWeights[ numHidNodes ][ numInNodes + 1 ], hidOutWeights[ numOutNodes ][ numHidNodes + 1 ];   // Stores the weights of edges
-
-    // Reads weights of edges from input layer to hidden layer
-    for ( int i=0; i<numHidNodes; i++ ) {
-        for ( int j=0; j<numInNodes+1; j++ )
-            inputWeights >> inHidWeights[i][j];
-    }
-
-    // Reads weights of edges from hidden layer to output layer
-    for ( int i=0; i<numOutNodes; i++ ) {
-        for ( int j=0; j<numHidNodes+1; j++ )
-            inputWeights >> hidOutWeights[i][j];
-    }
-
-    inputWeights.close();
-    */
-
     // Reads the file representing the training set
-    newNetwork.loadTrainData( fileNames[1] );
-
-    /*
-    ifstream inputTrain( fileNames[1] );
-
-    int numTrainEx, _checkInNodes, _checkOutNodes;
-    inputTrain >> numTrainEx >> _checkInNodes >> _checkOutNodes;
-
-    // Verify weight file matches training file
-    if ( numInNodes != _checkInNodes || numOutNodes != _checkOutNodes ) {
-
-        std::cerr << "Error: Number of nodes in weight file does not match number of nodes in training file! ("
-                  << numInNodes << "," << _checkInNodes << ") ("
-                  << numOutNodes << "," << _checkOutNodes << ")" << "\n";
-        return;
-
-    }
-
-    int inputAttributes[ numTrainEx ][ numInNodes ];
-    bool output[ numTrainEx ][ numOutNodes ];
-
-    // Reads input and output data
-    for ( int i=0; i<numTrainEx; i++ ) {
-
-        for ( int j=0; j<numInNodes; j++ )
-            inputTrain >> inputAttributes[i][j];
-
-        for ( int j=0; j<numOutNodes; j++ )
-            inputTrain >> output[i][j];
-
-    }
-
-    inputTrain.close();
-    */
+    newNetwork.loadData( fileNames[1] );
 
     // Trains the network
     newNetwork.train( epochs, learnRate );
+
+    // Writes weights to output file
     newNetwork.writeWeights( fileNames[2] );
 
     return;
@@ -111,8 +54,23 @@ void trainProgram() {
 // Handles testing the neural network
 void testProgram() {
 
+    vector<string> fileNames;
 
+    // Gets filenames from user and appends to list
+    for ( int i=0; i<3; i++ )
+        fileNames.push_back( filePrompt(i) );
 
+    // Reads the file representing the initial neural network
+    NeuralNetwork newNetwork = NeuralNetwork( fileNames[0] );
+
+    // Reads the file representing the testing set
+    newNetwork.loadData( fileNames[1] );
+
+    // Tests the network
+    newNetwork.test();
+
+    // Writes metrics to output file
+    newNetwork.writeMetrics( fileNames[2] );
 }
 
 
@@ -150,14 +108,22 @@ string filePrompt( int caseNum ) {
     switch ( caseNum ) {
 
         case 0:
+
             userPrompt = "initial neural network";
             break;
 
         case 1:
-            userPrompt = "training set";
+
+            // Checks global variable
+            if ( !test )
+                userPrompt = "training set";
+            else
+                userPrompt = "test set";
+
             break;
 
         case 2:
+
             userPrompt = "output file";
             break;
 
