@@ -169,8 +169,10 @@ void NeuralNetwork::train( int epochs, double learnRate ) {
 
             for ( nodeNum=0; nodeNum<this->numHidNodes; nodeNum++ ) {
 
+                // Uses nodeNum+1 in weightsHidOut[j][ nodeNum+1 ]
+                //   because there is no input to the dummy node (activation -1) to backpropagate to
                 for ( int j=0; j<this->numOutNodes; j++ )
-                    deltaHid[ nodeNum ] += ( weightsHidOut[j][ nodeNum ] * deltaOut[j] );    ///////////////////////// Maybe this is wrong
+                    deltaHid[ nodeNum ] += ( weightsHidOut[j][ nodeNum+1 ] * deltaOut[j] );
 
                 deltaHid[ nodeNum ] *= sigDeriv( inputToHid[ nodeNum ] );
 
