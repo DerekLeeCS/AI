@@ -1,18 +1,14 @@
-#include "fileProcessing.h"
-#include <iostream>
-#include <cmath>
+#include "neuralNetwork.h"
 
 
 
-using std::cin;
-using std::cout;
+
+
 using std::tie;
 
 
 void trainProgram();
 void testProgram();
-double sig( double );
-double sigDeriv( double );
 void returnInputs( vector<string> &, int &, double & );
 string filePrompt( int );
 
@@ -47,10 +43,7 @@ void trainProgram() {
     returnInputs( fileNames, epochs, learnRate );
 
     // Reads the file representing the initial neural network
-    int numInNodes, numHidNodes, numOutNodes;
-    vector< vector<double> > inHidWeights, hidOutWeights;
-
-    tie( inHidWeights, hidOutWeights, numInNodes, numHidNodes, numOutNodes ) = loadNetwork( fileNames[0] );
+    NeuralNetwork newNetwork = NeuralNetwork( fileNames[0] );
 
 
 
@@ -77,7 +70,10 @@ void trainProgram() {
     inputWeights.close();
     */
 
-    //// Reads the file representing the training set ////
+    // Reads the file representing the training set
+    newNetwork.loadTrainData( fileNames[1] );
+
+    /*
     ifstream inputTrain( fileNames[1] );
 
     int numTrainEx, _checkInNodes, _checkOutNodes;
@@ -108,6 +104,10 @@ void trainProgram() {
     }
 
     inputTrain.close();
+    */
+
+    // Trains the network
+    newNetwork.train( epochs, learnRate );
 
 
     return;
@@ -123,45 +123,7 @@ void testProgram() {
 
 
 
-// Computes activation of a neuron given the activations of the previous layer and weights of connections
-double activation( double prevActivations[], double weights[] ) {
 
-    // Make sure both arrays are the same size
-    int numPrevNeurons = sizeof( prevActivations ) / sizeof( *prevActivations );
-
-    if ( numPrevNeurons != ( sizeof( weights ) / sizeof( *weights ) ) ) {
-
-        std::cerr << "Error: Size of previous layer and weights is not the same! ("
-                  << numPrevNeurons << "," << sizeof( weights ) / sizeof( *weights )
-                  << ")" << "\n";
-        return -1;
-
-    }
-
-    double neuronActivation = 0;
-
-    for ( int i=0; i<numPrevNeurons; i++ )
-        neuronActivation += prevActivations[i] * weights[i];
-
-    return neuronActivation;
-
-}
-
-
-
-// Sigmoid function to calculate output of perceptron
-double sig( double x ) {
-
-    return 1 / ( 1 + exp(-x) );
-
-}
-
-// Derivative of Sigmoid function used for updating weights
-double sigDeriv( double x ) {
-
-    return sig(x) * ( 1 - sig(x) );
-
-}
 
 
 
