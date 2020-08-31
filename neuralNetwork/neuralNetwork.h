@@ -2,6 +2,7 @@
 #include <string>
 #include <tuple>
 #include <fstream>
+#include <sstream>
 #include <iostream>
 
 
@@ -10,6 +11,7 @@ using std::string;
 using std::tuple;
 using std::ifstream;
 using std::ofstream;
+using std::stringstream;
 using std::cin;
 using std::cout;
 
@@ -24,9 +26,13 @@ public:
     // Reads a file representing the training data
     void loadTrainData( string );
 
+    // Writes a file representing the weights of the neural network
+    void writeWeights( string );
+
     // Trains the network according to number of epochs and learning rate
     // Based on Figure 18.24 in the textbook
     void train( int, double );
+
 
 private:
 

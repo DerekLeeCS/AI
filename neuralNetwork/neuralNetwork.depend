@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1598835760 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\main.cpp
+1598853990 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\main.cpp
 	"neuralNetwork.h"
 
 1598832992 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\fileprocessing.cpp
@@ -12,13 +12,16 @@
 	<fstream>
 	<iostream>
 
-1598836601 d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\neuralnetwork.h
+1598854385 d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\neuralnetwork.h
 	<vector>
 	<string>
 	<tuple>
 	<fstream>
+	<sstream>
 	<iostream>
 
-1598834074 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\neuralnetwork.cpp
+1598862162 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\neuralnetwork.cpp
 	"neuralNetwork.h"
+	<iomanip>
+	<cmath>
 

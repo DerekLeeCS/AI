@@ -1,12 +1,6 @@
 #include "neuralNetwork.h"
 
 
-
-
-
-using std::tie;
-
-
 void trainProgram();
 void testProgram();
 void returnInputs( vector<string> &, int &, double & );
@@ -108,7 +102,7 @@ void trainProgram() {
 
     // Trains the network
     newNetwork.train( epochs, learnRate );
-
+    newNetwork.writeWeights( fileNames[2] );
 
     return;
 }

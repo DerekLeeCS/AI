@@ -1,4 +1,5 @@
 #include "neuralNetwork.h"
+#include <iomanip>
 #include <cmath>
 
 using std::make_tuple;
@@ -71,47 +72,130 @@ void NeuralNetwork::loadTrainData( string fileName ) {
 }
 
 
+// Writes a file representing the weights of the neural network
+void NeuralNetwork::writeWeights( string fileName ) {
+
+    ofstream outputWeights( fileName );
+    stringstream stream;
+
+    outputWeights << this->numInNodes << " " << this->numHidNodes << " " << this->numOutNodes << "\n";
+
+    for ( int i=0; i<numHidNodes; i++ ) {
+
+        for ( int j=0; j<numInNodes+1; j++ ) {
+
+            stream << std::fixed << std::setprecision(3) << this->weightsInHid[i][j];
+            outputWeights << stream.str() << " ";
+            stream.str(""); // Reset the stream
+
+        }
+
+        outputWeights << "\n";
+
+    }
+
+    for ( int i=0; i<numOutNodes; i++ ) {
+
+        for ( int j=0; j<numHidNodes+1; j++ ) {
+
+            stream << std::fixed << std::setprecision(3) << this->weightsHidOut[i][j];
+            outputWeights << stream.str() << " ";
+            stream.str(""); // Reset the stream
+
+        }
+
+        outputWeights << "\n";
+
+    }
+
+    outputWeights.close();
+
+}
+
+
 // Trains the network according to number of epochs and learning rate
 // Based on Figure 18.24 in the textbook
 void NeuralNetwork::train( int epochs, double learnRate ) {
 
     // Stores weighted sum of inputs to each layer
     vector< double > inputToHid = vector< double >( numHidNodes );
-    vector< double > inputToOut = vector< double >(numOutNodes);
+    vector< double > inputToOut = vector< double >( numOutNodes );
 
     // Stores activations of each layer
-    vector< double > activationsInput = vector< double >( numInNodes );
-    vector< double > activationsHid = vector< double >( numHidNodes );
+    vector< double > activationsInput = vector< double >( numInNodes+1 );
+    vector< double > activationsHid = vector< double >( numHidNodes+1 );
     vector< double > activationsOutput = vector< double >( numOutNodes );
 
+    // Stores error
+    vector< double > deltaOut = vector< double >( numOutNodes );
+    vector< double > deltaHid = vector< double >( numHidNodes );
+
+    int nodeNum;
+
     // Train for specified number of epochs
-    for ( int i=0; i<epochs; i++ ) {
+    for ( int iteration=0; iteration<epochs; iteration++ ) {
 
         for ( int trainEx=0; trainEx<this->numTrainEx; trainEx++ ) {
 
             // Propagate the inputs forward to compute the outputs
-            for ( int nodeNum=0; nodeNum<this->numInNodes; nodeNum++ )
-                activationsInput[ nodeNum ] = this->inputAttributes[ trainEx ][ nodeNum ];
+            for ( nodeNum=0; nodeNum<this->numInNodes; nodeNum++ )
+                activationsInput[ nodeNum+1 ] = this->inputAttributes[ trainEx ][ nodeNum ];
 
-            for ( int nodeNum=0; nodeNum<this->numHidNodes; nodeNum++ ) {
+            // Fixed input of -1
+            activationsInput[0] = -1;
+            activationsHid[0] = -1;
+
+            for ( nodeNum=0; nodeNum<this->numHidNodes; nodeNum++ ) {
 
                 inputToHid[ nodeNum ] = this->activation( activationsInput, this->weightsInHid[ nodeNum ] );
-                activationsHid[ nodeNum ] = sig( inputToHid[ nodeNum] );
+                activationsHid[ nodeNum+1 ] = this->sig( inputToHid[ nodeNum ] );
 
             }
 
-            for ( int nodeNum=0; nodeNum<this->numOutNodes; nodeNum++ ) {
+            for ( nodeNum=0; nodeNum<this->numOutNodes; nodeNum++ ) {
 
                 inputToOut[ nodeNum ] = this->activation( activationsHid, this->weightsHidOut[ nodeNum ] );
-                activationsOutput[ nodeNum ] = sig( inputToOut[ nodeNum ] );
+                activationsOutput[ nodeNum ] = this->sig( inputToOut[ nodeNum ] );
 
             }
 
+            // Reset error vectors
+            std::fill( deltaOut.begin(), deltaOut.end(), 0 );
+            std::fill( deltaHid.begin(), deltaHid.end(), 0 );
+
             // Propagate deltas backward from output layer to input layer
+            for ( nodeNum=0; nodeNum<this->numOutNodes; nodeNum++ )
+                deltaOut[ nodeNum ] = sigDeriv( inputToOut[ nodeNum ] ) * ( this->output[ trainEx ][ nodeNum ] - activationsOutput[ nodeNum ] );
+
+            for ( nodeNum=0; nodeNum<this->numHidNodes; nodeNum++ ) {
+
+                for ( int j=0; j<this->numOutNodes; j++ )
+                    deltaHid[ nodeNum ] += ( weightsHidOut[j][ nodeNum ] * deltaOut[j] );    ///////////////////////// Maybe this is wrong
+
+                deltaHid[ nodeNum ] *= sigDeriv( inputToHid[ nodeNum ] );
+
+            }
+
+            // Update every weight in network using deltas
+            for ( int i=0; i<this->numHidNodes+1; i++ ) {
+
+                for ( int j=0; j<this->numOutNodes; j++ )
+                    this->weightsHidOut[j][i] += learnRate * activationsHid[i] * deltaOut[j];
+
+            }
+
+            for ( int i=0; i<this->numInNodes+1; i++ ) {
+
+                for ( int j=0; j<this->numHidNodes; j++ )
+                    this->weightsInHid[j][i] += learnRate * activationsInput[i] * deltaHid[j];
+
+            }
 
         }
 
     }
+
+    return;
 
 }
 
@@ -121,12 +205,13 @@ double NeuralNetwork::activation( vector<double> prevActivations, vector<double>
 
     // Make sure both arrays are the same size
     int numPrevNeurons = prevActivations.size();
+    int _numWeights = weights.size();
 
-    if ( numPrevNeurons != weights.size() ) {
+    if ( numPrevNeurons != _numWeights ) {
 
         std::cerr << "Error: Size of previous layer and weights is not the same! ("
-                  << numPrevNeurons << "," << weights.size() << ")" << "\n";
-        return -1;
+                  << numPrevNeurons << "," << _numWeights << ")" << "\n";
+        exit(EXIT_FAILURE);
 
     }
 
