@@ -76,6 +76,15 @@ private:
     vector< vector< double > > inputAttributes;
     vector< vector< int > > output;
 
+    // Calculates Activations
+    //   Stores weighted sum of inputs to each layer
+    vector< double > inputToHid;
+    vector< double > inputToOut;
+    //   Stores activations of each layer
+    vector< double > activationsInput;
+    vector< double > activationsHid;
+    vector< double > activationsOutput;
+
     // Keeps track of metrics for each output class
     //   Stores A,B,C,D
     vector< vector< int > > metric;

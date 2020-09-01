@@ -38,16 +38,15 @@ void trainProgram() {
     // Reads the file representing the initial neural network
     NeuralNetwork newNetwork = NeuralNetwork( fileNames[0] );
 
-    // Reads the file representing the training set
-    newNetwork.loadData( fileNames[1] );
-
     // Trains the network
+    newNetwork.loadData( fileNames[1] );
     newNetwork.train( epochs, learnRate );
 
     // Writes weights to output file
     newNetwork.writeWeights( fileNames[2] );
 
     return;
+
 }
 
 
@@ -63,14 +62,15 @@ void testProgram() {
     // Reads the file representing the initial neural network
     NeuralNetwork newNetwork = NeuralNetwork( fileNames[0] );
 
-    // Reads the file representing the testing set
-    newNetwork.loadData( fileNames[1] );
-
     // Tests the network
+    newNetwork.loadData( fileNames[1] );
     newNetwork.test();
 
     // Writes metrics to output file
     newNetwork.writeMetrics( fileNames[2] );
+
+    return;
+
 }
 
 

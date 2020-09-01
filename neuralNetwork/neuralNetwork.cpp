@@ -32,6 +32,13 @@ NeuralNetwork::NeuralNetwork( string fileName ) {
 
     inputWeights.close();
 
+    // Initializes size of vectors
+    this->inputToHid = vector< double >( this->numHidNodes );
+    this->inputToOut = vector< double >( this->numOutNodes );
+    this->activationsInput = vector< double >( this->numInNodes+1 );
+    this->activationsHid = vector< double >( this->numHidNodes+1 );
+    this->activationsOutput = vector< double >( this->numOutNodes );
+
 }
 
 
@@ -43,6 +50,10 @@ void NeuralNetwork::loadData( string fileName ) {
     int _checkInNodes, _checkOutNodes;
     input >> this->numEx >> _checkInNodes >> _checkOutNodes;
 
+    // Initializes size of matrices
+    this->inputAttributes = vector< vector<double> >( this->numEx, vector<double>( this->numInNodes ) );
+    this->output = vector< vector<int> >( this->numEx, vector<int>( this->numOutNodes ) );
+
     // Verify weight file matches training file
     if ( this->numInNodes != _checkInNodes || this->numOutNodes != _checkOutNodes ) {
 
@@ -52,10 +63,6 @@ void NeuralNetwork::loadData( string fileName ) {
         return;
 
     }
-
-    // Initializes size of matrices
-    this->inputAttributes = vector< vector<double> >( numEx, vector<double>( this->numInNodes ) );
-    this->output = vector< vector<int> >( numEx, vector<int>( this->numOutNodes ) );
 
     // Reads input and output data
     for ( int i=0; i<this->numEx; i++ ) {
@@ -167,7 +174,6 @@ void NeuralNetwork::otherMetrics( ofstream &output, int A, int B, int C, int D, 
 }
 
 
-
 void NeuralNetwork::printMetrics( ofstream &output, double accuracy, double precision, double recall, double F1 ) {
 
     trimPrecision( output, accuracy );
@@ -192,15 +198,6 @@ void NeuralNetwork::trimPrecision( ofstream &output, double number ) {
 // Trains the network according to number of epochs and learning rate
 // Based on Figure 18.24 in the textbook
 void NeuralNetwork::train( int epochs, double learnRate ) {
-
-    // Stores weighted sum of inputs to each layer
-    vector< double > inputToHid = vector< double >( this->numHidNodes );
-    vector< double > inputToOut = vector< double >( this->numOutNodes );
-
-    // Stores activations of each layer
-    vector< double > activationsInput = vector< double >( this->numInNodes+1 );
-    vector< double > activationsHid = vector< double >( this->numHidNodes+1 );
-    vector< double > activationsOutput = vector< double >( this->numOutNodes );
 
     // Stores error
     vector< double > deltaOut = vector< double >( this->numOutNodes );
@@ -290,15 +287,6 @@ void NeuralNetwork::test() {
     // Initializes metric vector
     this->metric = vector< vector<int> >( this->numOutNodes, vector<int>( 4, 0 ) );
 
-    // Stores weighted sum of inputs to each layer
-    vector< double > inputToHid = vector< double >( this->numHidNodes );
-    vector< double > inputToOut = vector< double >( this->numOutNodes );
-
-    // Stores activations of each layer
-    vector< double > activationsInput = vector< double >( this->numInNodes+1 );
-    vector< double > activationsHid = vector< double >( this->numHidNodes+1 );
-    vector< double > activationsOutput = vector< double >( this->numOutNodes );
-
     int nodeNum;
 
     for ( int testEx=0; testEx<this->numEx; testEx++ ) {
@@ -366,6 +354,7 @@ double NeuralNetwork::activation( vector<double> prevActivations, vector<double>
 
         std::cerr << "Error: Size of previous layer and weights is not the same! ("
                   << numPrevNeurons << "," << _numWeights << ")" << "\n";
+
         exit( EXIT_FAILURE );
 
     }
