@@ -56,6 +56,9 @@ private:
     // Computes activation of a neuron given the activations of the previous layer and weights of connections
     double activation( vector<double>, vector<double> );
 
+    // Propagate the inputs forward to compute the outputs
+    void computeOutputs( int );
+
     // Prints Overall Accuracy, Precision, Recall, F1
     void otherMetrics( ofstream &, int, int, int, int, bool );
     void printMetrics( ofstream &output, double accuracy, double precision, double recall, double F1 );

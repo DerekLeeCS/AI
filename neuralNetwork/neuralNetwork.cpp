@@ -210,27 +210,7 @@ void NeuralNetwork::train( int epochs, double learnRate ) {
 
         for ( int trainEx=0; trainEx<this->numEx; trainEx++ ) {
 
-            // Propagate the inputs forward to compute the outputs
-            for ( nodeNum=0; nodeNum<this->numInNodes; nodeNum++ )
-                activationsInput[ nodeNum+1 ] = this->inputAttributes[ trainEx ][ nodeNum ];
-
-            // Fixed input of -1
-            activationsInput[0] = -1;
-            activationsHid[0] = -1;
-
-            for ( nodeNum=0; nodeNum<this->numHidNodes; nodeNum++ ) {
-
-                inputToHid[ nodeNum ] = this->activation( activationsInput, this->weightsInHid[ nodeNum ] );
-                activationsHid[ nodeNum+1 ] = this->sig( inputToHid[ nodeNum ] );
-
-            }
-
-            for ( nodeNum=0; nodeNum<this->numOutNodes; nodeNum++ ) {
-
-                inputToOut[ nodeNum ] = this->activation( activationsHid, this->weightsHidOut[ nodeNum ] );
-                activationsOutput[ nodeNum ] = this->sig( inputToOut[ nodeNum ] );
-
-            }
+            computeOutputs( trainEx );
 
             // Reset error vectors
             std::fill( deltaOut.begin(), deltaOut.end(), 0 );
@@ -291,28 +271,7 @@ void NeuralNetwork::test() {
 
     for ( int testEx=0; testEx<this->numEx; testEx++ ) {
 
-        // Propagate the inputs forward to compute the outputs
-        for ( nodeNum=0; nodeNum<this->numInNodes; nodeNum++ )
-            activationsInput[ nodeNum+1 ] = this->inputAttributes[ testEx ][ nodeNum ];
-
-        // Fixed input of -1
-        activationsInput[0] = -1;
-        activationsHid[0] = -1;
-
-        for ( nodeNum=0; nodeNum<this->numHidNodes; nodeNum++ ) {
-
-            inputToHid[ nodeNum ] = this->activation( activationsInput, this->weightsInHid[ nodeNum ] );
-            activationsHid[ nodeNum+1 ] = this->sig( inputToHid[ nodeNum ] );
-
-        }
-
-        for ( nodeNum=0; nodeNum<this->numOutNodes; nodeNum++ ) {
-
-            inputToOut[ nodeNum ] = this->activation( activationsHid, this->weightsHidOut[ nodeNum ] );
-            activationsOutput[ nodeNum ] = this->sig( inputToOut[ nodeNum ] );
-
-        }
-
+        computeOutputs( testEx );
 
         // Check which metric to increment based on predicted output and actual output
         for ( nodeNum=0; nodeNum<this->numOutNodes; nodeNum++ ) {
@@ -337,6 +296,38 @@ void NeuralNetwork::test() {
                 metric[ nodeNum ][ METRIC_D ]++;
 
         }
+
+    }
+
+}
+
+
+// Propagate the inputs forward to compute the outputs for a given input example
+void NeuralNetwork::computeOutputs( int curEx ) {
+
+    int nodeNum;
+
+    // Fixed input of -1 for bias weight
+    this->activationsInput[0] = -1;
+    this->activationsHid[0] = -1;
+
+    // Copies inputs to input layer
+    for ( nodeNum=0; nodeNum<this->numInNodes; nodeNum++ )
+        this->activationsInput[ nodeNum+1 ] = this->inputAttributes[ curEx ][ nodeNum ];
+
+    // Propagates to hidden layer
+    for ( nodeNum=0; nodeNum<this->numHidNodes; nodeNum++ ) {
+
+        this->inputToHid[ nodeNum ] = this->activation( activationsInput, this->weightsInHid[ nodeNum ] );
+        this->activationsHid[ nodeNum+1 ] = this->sig( inputToHid[ nodeNum ] );
+
+    }
+
+    // Propagates to output layer
+    for ( nodeNum=0; nodeNum<this->numOutNodes; nodeNum++ ) {
+
+        this->inputToOut[ nodeNum ] = this->activation( activationsHid, this->weightsHidOut[ nodeNum ] );
+        this->activationsOutput[ nodeNum ] = this->sig( inputToOut[ nodeNum ] );
 
     }
 
