@@ -12,7 +12,7 @@
 	<fstream>
 	<iostream>
 
-1598913426 d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\neuralnetwork.h
+1598926323 d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\neuralnetwork.h
 	<vector>
 	<string>
 	<tuple>
@@ -20,7 +20,7 @@
 	<sstream>
 	<iostream>
 
-1598913281 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\neuralnetwork.cpp
+1598915859 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\neuralnetwork\neuralnetwork.cpp
 	"neuralNetwork.h"
 	<iomanip>
 	<cmath>

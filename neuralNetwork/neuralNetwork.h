@@ -61,7 +61,7 @@ private:
     void printMetrics( ofstream &output, double accuracy, double precision, double recall, double F1 );
 
     // Trims floating-points to 3 digits after the decimal
-    void trimPrecision( ofstream &output, float number );
+    void trimPrecision( ofstream &output, double number );
 
     // Sigmoid function and derivative of Sigmoid function
     double sig( double );

@@ -180,7 +180,7 @@ void NeuralNetwork::printMetrics( ofstream &output, double accuracy, double prec
 
 
 // Trims floating-points to 3 digits after the decimal
-void NeuralNetwork::trimPrecision( ofstream &output, float number ) {
+void NeuralNetwork::trimPrecision( ofstream &output, double number ) {
 
     stringstream stream;
     stream << std::fixed << std::setprecision(3) << number;
@@ -366,7 +366,7 @@ double NeuralNetwork::activation( vector<double> prevActivations, vector<double>
 
         std::cerr << "Error: Size of previous layer and weights is not the same! ("
                   << numPrevNeurons << "," << _numWeights << ")" << "\n";
-        exit(EXIT_FAILURE);
+        exit( EXIT_FAILURE );
 
     }
 
