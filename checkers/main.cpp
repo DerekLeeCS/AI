@@ -2,10 +2,11 @@
 
 using namespace std;
 
-int main()
-{
+int main() {
+
     board newBoard;
     //newBoard.specialBoard();
     newBoard.playGame();
     return 0;
+
 }

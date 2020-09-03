@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <tuple>
 #include <memory>
+#include <chrono>
 
 using std::string;
 using std::list;
@@ -13,181 +14,201 @@ using std::tuple;
 using std::shared_ptr;
 
 
-namespace pieceVals{
-   const bool COLOR_RED_VAL = 0;     // Red
-   const bool COLOR_WHITE_VAL = 1;   // White
+namespace pieceVals {
 
-   const int TYPE_MAN_VAL = 0;       // Man
-   const int TYPE_KING_VAL = 1;      // King
-   const int TYPE_EMPTY_VAL = 2;     // Empty Square
+    // Minimax Search
+    #define REMAINING_TIME_LIMIT        0.1
+    #define TIME_LIMIT_EXCEEDED         10101
+    #define SINGLE_MOVE                 11111
+    #define VAL_MIN                     -99999.0f
+    #define VAL_MAX                     99999.0f
 
-   const bool FILLER_FALSE = 0;      // Piece
-   const bool FILLER_TRUE = 1;       // Filler (squares that pieces cannot move on)
+    #define VICTORY_RED_PIECE           10000
+    #define VICTORY_RED_MOVE            9999
+    #define VICTORY_WHITE_PIECE         -10000
+    #define VICTORY_WHITE_MOVE          -9999
+
+
+    const bool COLOR_RED_VAL = 0;     // Red
+    const bool COLOR_WHITE_VAL = 1;   // White
+
+    const int TYPE_MAN_VAL = 0;       // Man
+    const int TYPE_KING_VAL = 1;      // King
+    const int TYPE_EMPTY_VAL = 2;     // Empty Square
+
+    const bool FILLER_FALSE = 0;      // Piece
+    const bool FILLER_TRUE = 1;       // Filler (squares that pieces cannot move on)
+
 };
 
 
-class board
-{
+class board {
+
+public:
+    //////////////////// Member Functions ////////////////////
+
+    // Constructor
+    // Creates the default board
+    board();
+
+    class piece; // Object class for pieces
+
+    void specialBoard(); // For testing boards
+
+    void playGame();
+    void playerMove();
+    void computerMove();
+
+    void endTurn(); // Series of actions to be taken at the end of a turn
+
+    // Returns a pointer to the set of pieces that can be moved
+    unordered_set< shared_ptr<piece> >* returnPieces();
+
+    // Performs a specified move
+    // If another jump is possible, returns true; otherwise, returns false
+    bool moveResult( tuple<int,int>, tuple<int,int> );
+
+    // Returns a list of pointers to pieces affected by a move
+    list< shared_ptr< piece > > affectedPieces( tuple<int,int>, tuple<int,int> );
+
+    // Isolates a board for iterative deepening
+    // Used in minimax
+    void isolateBoard( tuple<int,int>, tuple<int,int> );
+
+    // Checks moves of a specific piece
+    void checkMoves( shared_ptr<piece> & );
+
+    // Checks moves of pieces affected by curPiece's move
+    void checkDiagMoves( shared_ptr<piece> &, tuple<int,int>, bool );
+
+    // Checks if a row/column is within the board
+    // If valid, returns true; otherwise, returns false
+    bool validLoc( int );
+
+    // Updates the current score of the board
+    void heuristic();
+
+    // Checks the closest enemy piece to a king
+    // Returns an int representing the number of moves needed to reach that piece
+    int kingDistance( shared_ptr<piece> & );
+
+    // Checks if the game is at a terminal state
+    bool terminalState( float );
+
+    float minimax( board &, int, bool, float, float );
+
+
+    class piece {
+
     public:
-        //////////////////// Member Functions ////////////////////
+        piece();
+        piece( bool color, int type );  // Regular constructor
+        piece( bool filler );           // Filler constructor
+        piece( const piece & );         // Copy constructor
 
-        // Constructor
-        // Creates the default board
-        board();
+        void updateCount( board &, bool );    // Increments piece counts
+        void clearPiece( board & );           // Removes piece from board vectors and decrements piece counts
+        void resetPiece();                  // Resets moves/jumps of the piece
 
-        class piece; // Object class for pieces
+        // Checks if a piece should be promoted
+        // If successful, returns true; else, returns false
+        bool checkPromotion(board &);
 
-        void specialBoard(); // For testing boards
+        // Returns a pointer to the list of actions that can be taken by the piece
+        list< tuple<int,int> >* returnActions();
 
-        void playGame();
-        void playerMove();
-        void computerMove();
+        void insertMove( board & );
+        void removeMove( board & );
+        void insertJump( board & );
+        void removeJump( board & );
 
-        void endTurn(); // Series of actions to be taken at the end of a turn
+        bool validDirection(int);
 
-        // Returns a pointer to the set of pieces that can be moved
-        unordered_set< shared_ptr<piece> >* returnPieces();
+        ////////// Data Members //////////
+        bool color;
+        int type;
+        bool filler;
 
-        // Performs a specified move
-        // If another jump is possible, returns true; otherwise, returns false
-        bool moveResult(tuple<int,int>,tuple<int,int>);
+        // Bool for if piece can move / jump
+        bool validMove = false;
+        bool validJump = false;
 
-        // Returns a list of pointers to pieces affected by a move
-        list< shared_ptr<piece> > affectedPieces(tuple<int,int>,tuple<int,int>);
+        list< tuple<int,int> > moves; // Represents possible squares to move to
+        list< tuple<int,int> > jumps; // Represents possible squares to jump to
 
-        // Isolates a board for iterative deepening
-        // Used in minimax
-        void isolateBoard(tuple<int,int>,tuple<int,int>);
+        tuple<int,int> loc; // Represents the location of the piece in the board
 
-        // Checks moves of a specific piece
-        void checkMoves(shared_ptr<piece> &);
-
-        // Checks moves of pieces affected by curPiece's move
-        void checkDiagMoves(shared_ptr<piece> &, tuple<int,int>, bool);
-
-        // Checks if a row/column is within the board
-        // If valid, returns true; otherwise, returns false
-        bool validLoc(int);
-
-        // Updates the current score of the board
-        void heuristic();
-
-        // Checks the closest enemy piece to a king
-        // Returns an int representing the number of moves needed to reach that piece
-        int kingDistance(shared_ptr<piece> &);
-
-        // Checks if the game is at a terminal state
-        bool terminalState(float);
-
-        float minimax(board &,int,bool,float,float);
+    };
 
 
-        class piece
-        {
-            public:
-                piece();
-                piece( bool color, int type );  // Regular constructor
-                piece( bool filler );           // Filler constructor
-                piece( const piece & );         // Copy constructor
+private:
+    //////////////////// Data Members ////////////////////
 
-                void updateCount(board &, bool);    // Increments piece counts
-                void clearPiece(board &);           // Removes piece from board vectors and decrements piece counts
-                void resetPiece();                  // Resets moves/jumps of the piece
+    shared_ptr< piece > gameboard[8][8]; // The board
+    shared_ptr< piece > emptyPiece;      // A pointer to a piece representing an empty square
+    shared_ptr< piece > fillerPiece;     // A pointer to a piece representing a filler square
 
-                // Checks if a piece should be promoted
-                // If successful, returns true; else, returns false
-                bool checkPromotion(board &);
+    float score;            // Score determined by the heuristic
+    int turnCount = 1;      // Current turn
+    int computerTime;       // Amount of time in seconds computer has to calculate move
+    bool redTurn = false;   // If true, red has current move; else, white has current move
+    bool AIvsAI = false;    // If true, computer plays itself; else, computer plays against player
+    int maxDepth;           // Maximum depth set by iterative deepening
 
-                // Returns a pointer to the list of actions that can be taken by the piece
-                list< tuple<int,int> >* returnActions();
+    // Keeps track of time taken during minimax search
+    std::chrono::time_point<std::chrono::system_clock> startTime, endTime;
+    std::chrono::duration<double> elapsed_seconds;
 
-                void insertMove(board &);
-                void removeMove(board &);
-                void insertJump(board &);
-                void removeJump(board &);
+    // Stores a list of moves to get to current position
+    list< tuple< tuple<int,int>, tuple<int,int> > > moves;
 
-                bool validDirection(int);
+    // Stores a list of the best moves available
+    list< tuple< tuple<int,int>, tuple<int,int> > > bestMoves;
 
-                ////////// Data Members //////////
-                bool color;
-                int type;
-                bool filler;
+    // Stores a shared_ptr to all of the pieces
+    unordered_set< shared_ptr<piece> > redPieces;
+    unordered_set< shared_ptr<piece> > whitePieces;
 
-                // Bool for if piece can move / jump
-                bool validMove = false;
-                bool validJump = false;
-
-                list< tuple<int,int> > moves; // Represents possible squares to move to
-                list< tuple<int,int> > jumps; // Represents possible squares to jump to
-
-                tuple<int,int> loc; // Represents the location of the piece in the board
-        };
+    // Stores a shared_ptr to all of pieces that are available to move/jump
+    unordered_set< shared_ptr<piece> > redMoves;
+    unordered_set< shared_ptr<piece> > redJumps;
+    unordered_set< shared_ptr<piece> > whiteMoves;
+    unordered_set< shared_ptr<piece> > whiteJumps;
+    unordered_set< shared_ptr<piece> > multiJumps;
 
 
-    private:
-        //////////////////// Data Members ////////////////////
+    ////////// Count of pieces //////////
 
-        shared_ptr<piece> gameboard[8][8]; // The board
-        shared_ptr<piece> emptyPiece;      // A pointer to a piece representing an empty square
-        shared_ptr<piece> fillerPiece;     // A pointer to a piece representing a filler square
-
-        float score;            // Score determined by the heuristic
-        int turnCount = 1;      // Current turn
-        int computerTime = 30;  // Amount of time in seconds computer has to calculate move
-        bool redTurn = false;   // If true, red has current move; else, white has current move
-        bool AIvsAI = false;    // If true, computer plays itself; else, computer plays against player
-        int maxDepth;           // Maximum depth set by iterative deepening
+    // Number of men and kings currently on the board
+    int redMen = 0;
+    int redKings = 0;
+    int whiteMen = 0;
+    int whiteKings = 0;
+    // Number of men on the last row
+    int redLast = 0;
+    int whiteLast = 0;
 
 
-        // Stores a list of moves to get to current position
-        list< tuple< tuple<int,int>,tuple<int,int> > > moves;
+    ////////// Display Functions //////////
 
-        // Stores a list of the best moves available
-        list< tuple< tuple<int,int>,tuple<int,int> > > bestMoves;
+    void printVictory( bool, bool );
 
-        // Stores a shared_ptr to all of the pieces
-        unordered_set< shared_ptr<piece> > redPieces;
-        unordered_set< shared_ptr<piece> > whitePieces;
-
-        // Stores a shared_ptr to all of pieces that are available to move/jump
-        unordered_set< shared_ptr<piece> > redMoves;
-        unordered_set< shared_ptr<piece> > redJumps;
-        unordered_set< shared_ptr<piece> > whiteMoves;
-        unordered_set< shared_ptr<piece> > whiteJumps;
-        unordered_set< shared_ptr<piece> > multiJumps;
+    //// Menu and Sub-Menus ////
+    void printStart();
+    void printSettings();
+    void printPlayerSettings();
+    void printPieceSettings();  // Change starting board
+    void printTimeSettings();   // Change computing time
+    void printAddPiece();
+    void printRemovePiece();
+    bool validateInput();       // Validates user input; if input is invalid, returns true; otherwise, returns false
 
 
-        ////////// Count of pieces //////////
+    void printBoard();      // Prints the current board
+    void printMoves();      // Prints the available moves for the player
+    void printHelp();       // Prints a list of commands
+    void printError();      // Prints an error message
+    void printMoveError();  // Prints a move error message
 
-        // Number of men and kings currently on the board
-        int redMen = 0;
-        int redKings = 0;
-        int whiteMen = 0;
-        int whiteKings = 0;
-        // Number of men on the last row
-        int redLast = 0;
-        int whiteLast = 0;
-
-
-        ////////// Display Functions //////////
-
-        void printVictory(bool,bool);
-
-        //// Menu and Sub-Menus ////
-        void printStart();
-        void printSettings();
-        void printPlayerSettings();
-        void printPieceSettings();  // Change starting board
-        void printTimeSettings();   // Change computing time
-        void printAddPiece();
-        void printRemovePiece();
-        bool validateInput();       // Validates user input; if input is invalid, returns true; otherwise, returns false
-
-
-        void printBoard();      // Prints the current board
-        void printMoves();      // Prints the available moves for the player
-        void printHelp();       // Prints a list of commands
-        void printError();      // Prints an error message
-        void printMoveError();  // Prints a move error message
 };
 
