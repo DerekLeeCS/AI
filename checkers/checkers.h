@@ -17,7 +17,7 @@ using std::shared_ptr;
 namespace pieceVals {
 
     // Minimax Search
-    #define REMAINING_TIME_LIMIT        0.1
+    #define REMAINING_TIME_LIMIT        0.05
     #define TIME_LIMIT_EXCEEDED         10101
     #define SINGLE_MOVE                 11111
     #define VAL_MIN                     -99999.0f
@@ -205,7 +205,6 @@ private:
 
 
     void printBoard();      // Prints the current board
-    void printMoves();      // Prints the available moves for the player
     void printHelp();       // Prints a list of commands
     void printError();      // Prints an error message
     void printMoveError();  // Prints a move error message

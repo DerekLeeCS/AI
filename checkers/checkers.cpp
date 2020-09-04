@@ -27,8 +27,7 @@ using namespace pieceVals;
 #define FOREGROUND_MAGENTA		    (FOREGROUND_RED | FOREGROUND_BLUE)
 #define FOREGROUND_WHITE   	        (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN)
 
-// If debugging, 1; Otherwise, 0
-#define DEBUG_BOOL                  0
+#define DEBUG_BOOL                  0   // If debugging, 1; Otherwise, 0
 
 
 
@@ -36,20 +35,21 @@ using namespace pieceVals;
 
 // Code found from
 // https://stackoverflow.com/questions/25559077/how-to-get-background-color-back-to-previous-color-after-use-of-std-handle
-void SetConsoleColour(WORD* Attributes, DWORD Colour)
-{
+void SetConsoleColour( WORD* Attributes, DWORD Colour ) {
+
     CONSOLE_SCREEN_BUFFER_INFO Info;
-    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-    GetConsoleScreenBufferInfo(hStdout, &Info);
+    HANDLE hStdout = GetStdHandle( STD_OUTPUT_HANDLE );
+    GetConsoleScreenBufferInfo( hStdout, &Info );
     *Attributes = Info.wAttributes;
-    SetConsoleTextAttribute(hStdout, Colour);
+    SetConsoleTextAttribute( hStdout, Colour );
+
 }
 
-void ResetConsoleColour(WORD Attributes)
-{
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), Attributes);
-}
+void ResetConsoleColour( WORD Attributes ) {
 
+    SetConsoleTextAttribute( GetStdHandle(STD_OUTPUT_HANDLE), Attributes );
+
+}
 
 int states = 0; // To check how many states minimax searched through
 
@@ -57,32 +57,33 @@ int states = 0; // To check how many states minimax searched through
 ///////////////////////////////////// Piece /////////////////////////////////////
 
 // Declaration constructor
-board::piece::piece()
-{
+board::piece::piece() {
 
 }
 
 
 // Regular constructor
-board::piece::piece( bool color, int type )
-{
+board::piece::piece( bool color, int type ) {
+
     this->color = color;
     this->type = type;
     filler = false;
+
 }
 
 
 // Filler constructor
 // Piece class for sections of board that are not supposed to be used
-board::piece::piece( bool filler )
-{
+board::piece::piece( bool filler ) {
+
     this->filler = filler;
+
 }
 
 
 // Copy constructor
-board::piece::piece( const piece &copyPiece )
-{
+board::piece::piece( const piece &copyPiece ) {
+
     this->color = copyPiece.color;
     this->type = copyPiece.type;
     this->filler = copyPiece.filler;
@@ -94,165 +95,183 @@ board::piece::piece( const piece &copyPiece )
     this->jumps = copyPiece.jumps;
 
     this->loc = copyPiece.loc;
+
 }
 
 
 // Updates piece counts
-// Increment = 1 for increaseCount
-// Increment = 0 for decreaseCount
-void board::piece::updateCount(board &owner, bool increment)
-{
+//      Increment = 1 for increaseCount
+//      Increment = 0 for decreaseCount
+void board::piece::updateCount( board &owner, bool increment ) {
+
     int change;
-    if(increment)
+    if ( increment )
         change = 1;
     else
         change = -1;
 
     // Gets row and column of piece
     int row,col;
-    tie(row,col) = this->loc;
+    tie( row, col ) = this->loc;
 
     // Updates counts
-    if( this->color == COLOR_RED_VAL )
-    {
-        if( this->type == TYPE_KING_VAL )
+    if ( this->color == COLOR_RED_VAL ) {
+
+        if ( this->type == TYPE_KING_VAL )
             owner.redKings += change;
         else
             owner.redMen += change;
+
     }
-    else
-    {
-        if( this->type == TYPE_KING_VAL )
+    else {
+
+        if ( this->type == TYPE_KING_VAL )
             owner.whiteKings += change;
         else
             owner.whiteMen += change;
+
     }
+
 }
 
 
 // Removes piece from board vectors and decrements piece counts
-void board::piece::clearPiece(board &owner)
-{
+void board::piece::clearPiece( board &owner ) {
+
     // Gets row and column of piece
     int row,col;
-    tie(row,col) = this->loc;
+    tie( row, col ) = this->loc;
 
     // Removes piece from board move/jump sets
-    if( this->validMove )
-    {
-        if( this->color == COLOR_RED_VAL )
-            owner.redMoves.erase(owner.gameboard[row][col]);
+    if ( this->validMove ) {
+
+        if ( this->color == COLOR_RED_VAL )
+            owner.redMoves.erase( owner.gameboard[row][col] );
         else
-            owner.whiteMoves.erase(owner.gameboard[row][col]);
+            owner.whiteMoves.erase( owner.gameboard[row][col] );
+
     }
-    if( this->validJump )
-    {
+
+    if ( this->validJump ) {
+
         if( this->color == COLOR_RED_VAL )
-            owner.redJumps.erase(owner.gameboard[row][col]);
+            owner.redJumps.erase( owner.gameboard[row][col] );
         else
-            owner.whiteJumps.erase(owner.gameboard[row][col]);
+            owner.whiteJumps.erase( owner.gameboard[row][col] );
+
     }
-    if( this->color == COLOR_RED_VAL )
-        owner.redPieces.erase(owner.gameboard[row][col]);
+
+    if ( this->color == COLOR_RED_VAL )
+        owner.redPieces.erase( owner.gameboard[row][col] );
     else
-        owner.whitePieces.erase(owner.gameboard[row][col]);
+        owner.whitePieces.erase( owner.gameboard[row][col] );
 
     // Decrements piece counts
-    this->updateCount(owner,false);
+    this->updateCount( owner, false );
+
 }
 
 
 // Resets a piece to default values
-void board::piece::resetPiece()
-{
+void board::piece::resetPiece() {
+
     this->validMove = false;
     this->validJump = false;
 
     this->moves.clear();
     this->jumps.clear();
+
 }
 
 
 // Checks if a piece should be promoted
-bool board::piece::checkPromotion(board &owner)
-{
+bool board::piece::checkPromotion( board &owner ) {
+
     int row = get<0>(this->loc);
     bool promo = false;
 
     // Only continues if piece is a man
-    if( (this->type == TYPE_MAN_VAL) )
-    {
+    if ( this->type == TYPE_MAN_VAL ) {
+
         // If piece should be promoted, update board counts
-        if( this->color == COLOR_WHITE_VAL && row == 0 )
-        {
+        if ( this->color == COLOR_WHITE_VAL && row == 0 ) {
+
             owner.whiteMen--;
             owner.whiteKings++;
             promo = true;
+
         }
-        else if( this->color == COLOR_RED_VAL && row == 7 )
-        {
+        else if ( this->color == COLOR_RED_VAL && row == 7 ) {
+
             owner.redMen--;
             owner.redKings++;
             promo = true;
+
         }
+
     }
 
     // If valid promotion, piece becomes king
-    if(promo)
-    {
+    if ( promo ) {
+
         this->type = TYPE_KING_VAL;
         return true;
+
     }
     else
         return false;
+
 }
 
 
 // Inserts piece into board move set
-void board::piece::insertMove(board &owner)
-{
+void board::piece::insertMove( board &owner ) {
+
     // Gets row and column of piece
     int row,col;
-    tie(row,col) = this->loc;
+    tie( row, col ) = this->loc;
 
     this->validMove = true;
 
-    if( this->color == COLOR_RED_VAL )
-        owner.redMoves.insert(owner.gameboard[row][col]);
+    if ( this->color == COLOR_RED_VAL )
+        owner.redMoves.insert( owner.gameboard[row][col] );
     else
-        owner.whiteMoves.insert(owner.gameboard[row][col]);
+        owner.whiteMoves.insert( owner.gameboard[row][col] );
+
 }
 
 
 // Removes piece from board move set
-void board::piece::removeMove(board &owner)
-{
+void board::piece::removeMove( board &owner ) {
+
     // Gets row and column of piece
     int row,col;
-    tie(row,col) = this->loc;
+    tie( row, col ) = this->loc;
 
     this->validMove = false;
 
-    if( this->color == COLOR_RED_VAL )
-        owner.redMoves.erase(owner.gameboard[row][col]);
+    if ( this->color == COLOR_RED_VAL )
+        owner.redMoves.erase( owner.gameboard[row][col] );
     else
-        owner.whiteMoves.erase(owner.gameboard[row][col]);
+        owner.whiteMoves.erase( owner.gameboard[row][col] );
+
 }
 
 
 // Inserts piece into board jump set
-void board::piece::insertJump(board &owner)
-{
+void board::piece::insertJump( board &owner ) {
+
     // Gets row and column of piece
     int row,col;
-    tie(row,col) = this->loc;
+    tie( row, col ) = this->loc;
 
     this->validJump = true;
 
-    if( this->color == COLOR_RED_VAL )
-        owner.redJumps.insert(owner.gameboard[row][col]);
+    if ( this->color == COLOR_RED_VAL )
+        owner.redJumps.insert( owner.gameboard[row][col] );
     else
-        owner.whiteJumps.insert(owner.gameboard[row][col]);
+        owner.whiteJumps.insert( owner.gameboard[row][col] );
+
 }
 
 
@@ -266,9 +285,9 @@ void board::piece::removeJump( board &owner ) {
     this->validJump = false;
 
     if ( this->color == COLOR_RED_VAL )
-        owner.redJumps.erase(owner.gameboard[row][col]);
+        owner.redJumps.erase( owner.gameboard[row][col] );
     else
-        owner.whiteJumps.erase(owner.gameboard[row][col]);
+        owner.whiteJumps.erase( owner.gameboard[row][col] );
 
 }
 
@@ -372,7 +391,8 @@ void board::specialBoard() {
         }
     }
     */
-    // Make double jump choice
+
+    // Computer make double jump choice
     gameboard[3][0] = gameboard[1][0];
     gameboard[3][0]->loc = make_tuple(3,0);
     gameboard[1][0] = emptyPiece;
@@ -386,6 +406,7 @@ void board::specialBoard() {
     gameboard[4][7] = gameboard[6][5];
     gameboard[4][7]->loc = make_tuple(4,7);
     gameboard[6][5] = emptyPiece;
+
     /*
     // Double Jump
     gameboard[4][5] = gameboard[1][4];
@@ -666,31 +687,43 @@ void board::computerMove() {
 
     cout << "Computer is thinking..." << "\n" << endl;
 
+    // Stores bestMoves when a search to a depth has been fully completed
+    list< tuple< tuple<int,int>, tuple<int,int> > > futureMoves;
+
     // Resets stored moves
     this->moves.clear();
     this->bestMoves.clear();
 
     // Variables for minimax search
     this->startTime = std::chrono::system_clock::now(); // Keeps track of elapsed time
-    this->maxDepth = 0;
-    float tempScore;
+    this->maxDepth = 1;
+    float futureScore, tempScore = -12345;
     states = 0;
 
-    // Stops iterative deepening if elapsed time becomes close to max time
-    while ( tempScore != TIME_LIMIT_EXCEEDED ) {
+    // Iterative deepening
+    while (1) {
 
-        // Iterative deepening
-        //      Maximizing player if Red
-        //      Minimizing player if White
-        this->maxDepth++;
-        tempScore = this->minimax(*this,0,this->redTurn,VAL_MIN,VAL_MAX);
+        // Maximizing player if Red
+        // Minimizing player if White
+        tempScore = this->minimax( *this, 0, this->redTurn, VAL_MIN, VAL_MAX );
+
+        // Stops iterative deepening if elapsed time becomes close to max time
+        if ( tempScore == TIME_LIMIT_EXCEEDED )
+            break;
+
+        // Only updates if a search was fully completed
+        futureMoves = this->bestMoves;
+        futureScore = tempScore;    // Used for debugging
 
         // If there is only one move
         if( tempScore == SINGLE_MOVE )
             break;
+
         // If reached end of game
         if( terminalState( tempScore ) )
             break;
+
+        this->maxDepth++;
 
     }
 
@@ -698,21 +731,19 @@ void board::computerMove() {
     this->endTime = std::chrono::system_clock::now();
     this->elapsed_seconds = this->endTime - this->startTime;
 
+    this->bestMoves = futureMoves;
+
     // Used for debugging
     if ( DEBUG_BOOL ) {
 
         // Outputs a list of actions leading to optimal state
-        for(auto iter : this->bestMoves)
+        for( auto iter : this->bestMoves )
             cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
 
-        cout << "Future Score: " << tempScore << "\n"
-             << "Number of States: " << states << "\n";
+        cout << "Future Score: " << futureScore << "\n"
+             << "Number of States: " << states << "\n" << "\n";
 
     }
-
-    // Required statistics
-    cout << "Maximum Depth: " << this->maxDepth << "\n"
-         << "Time Taken: " << ( this->elapsed_seconds ).count() << "\n" << endl;
 
     bool multiJump = true;
 
@@ -722,104 +753,78 @@ void board::computerMove() {
     //           will not loop
     while ( multiJump ) {
 
-        multiJump = moveResult(get<0>(this->bestMoves.front()),get<1>(this->bestMoves.front()));
+        multiJump = moveResult( get<0>( this->bestMoves.front() ), get<1>( this->bestMoves.front() ) );
         this->bestMoves.pop_front(); // Removes action that was just performed
         printBoard();
 
     }
 
+    // Required statistics
+    cout << "Maximum Depth: " << this->maxDepth << "\n"
+         << "Time Taken: " << ( this->elapsed_seconds ).count() << endl;
+
+
     endTurn();
 
 }
 
+
 // Handles player actions
 void board::playerMove() {
 
-    bool validPiece = false;
     unordered_set< shared_ptr<piece> > possiblePieces;
-    std::vector< tuple<int,int> > pieceLocs;
-    tuple<int,int> tempLoc;
+    vector< tuple<int,int> > pieceLocs;
+    shared_ptr<piece> tempPiece;
+    int curRow, curCol, tempRow, tempCol, option;
+    vector< tuple< tuple<int,int>, tuple<int,int> > > optionVec;
+    tuple<int,int> oldLoc, newLoc;
     string input;
-    int row,col;
-
-    // Gets pieces that can take a valid action
-    possiblePieces = *( this->returnPieces() );
-
-    // Cleans up the list for the player
-    for ( auto iter : possiblePieces )
-        pieceLocs.push_back( iter->loc );
-    sort( pieceLocs.begin(), pieceLocs.end() );
-
-    // While player has not selected a valid piece
-    while ( !validPiece ) {
-
-        cout << "Select a piece to move:" << endl;
-
-        // Outputs the list
-        for ( auto iter : pieceLocs )
-            cout << char( get<0>(iter) + 97 ) << get<1>(iter) + 1 << " ";
-        cout << "\n" << endl;
-
-        // Waits for player input
-        cin >> input;
-        cout << endl;
-
-        // Checks for valid input
-        if ( validateInput() )
-            continue;
-
-        // Checks for specific commands
-        if ( input == "help" ) {
-
-            printHelp();
-            continue;
-
-        }
-        else if ( input == "board" ) {
-
-            printBoard();
-            continue;
-
-        }
-
-        // Gets location from input
-        row = int(input[0]) - 97;
-        col = input[1] - '1';
-
-        // If input is found in the set
-        if ( possiblePieces.find(gameboard[row][col]) != possiblePieces.end() )
-            validPiece = true;
-
-        if ( !validPiece )
-            printMoveError();
-
-    }
 
     bool multiJump = true;
-    bool validAction = false;
-    shared_ptr<piece> tempPiece = gameboard[row][col];
-    list< tuple<int,int> > *possibleActions;
-    string userInput;
-    tuple<int,int> tempTuple;
 
-    // Continue allowing moves with the piece while there is a valid jump
     while ( multiJump ) {
 
+        // Gets pieces that can take a valid action
+        possiblePieces = *( this->returnPieces() );
+
+        // Cleans up the list for the player
+        for ( auto iter : possiblePieces )
+            pieceLocs.push_back( iter->loc );
+        sort( pieceLocs.begin(), pieceLocs.end() );
+
+        bool validOption = false;
+
         // While player has not selected a valid action
-        while ( !validAction ) {
+        while ( !validOption ) {
 
-            cout << "Select a valid action:" << endl;
+            cout << "Select an option:" << "\n";
 
-            // Gets valid actions for the piece
-            possibleActions = tempPiece->returnActions();
+            int i=0;
 
             // Outputs the list
-            for ( auto iter : *possibleActions )
-                cout << char(get<0>(iter) + 97) << get<1>(iter)+1 << " ";
-            cout << "\n" << endl;
+            for ( auto iter : pieceLocs ) {
+
+                curRow = get<0>(iter);
+                curCol = get<1>(iter);
+                tempPiece = gameboard[ curRow ][ curCol ];
+
+                for ( auto iter2 : *( tempPiece->returnActions() ) ) {
+
+                    i++;
+                    tempRow = get<0>(iter2);
+                    tempCol = get<1>(iter2);
+
+                    optionVec.push_back( make_tuple( make_tuple( curRow, curCol ), make_tuple( tempRow, tempCol ) ) );
+                    cout << i << ": " << char( curRow+97 ) << curCol+1 << " -> " << char( tempRow+97 ) << tempCol+1 << "\n";
+
+                }
+
+            }
+
+            cout << endl;
 
             // Waits for player input
-            cin >> userInput;
+            cin >> input;
             cout << endl;
 
             // Checks for valid input
@@ -827,52 +832,53 @@ void board::playerMove() {
                 continue;
 
             // Checks for specific commands
-            if ( userInput == "help" ) {
+            if ( input == "help" ) {
 
                 printHelp();
                 continue;
 
             }
-            else if ( userInput == "board" ) {
+            else if ( input == "board" ) {
 
                 printBoard();
                 continue;
 
             }
 
-            tempTuple = make_tuple( int(userInput[0]) - 97, (userInput[1] - '1') );
+            // Gets action from input
+            try {
 
-            // Checks if move was in the list of actions
-            for ( auto iter : *possibleActions ) {
+                option = std::stoi(input);
 
-                if ( iter == tempTuple )
-                    validAction = true;
+            } catch( ... ) {
+
+                option = 0;
 
             }
 
-            if ( !validAction )
+            if ( 1 <= option && option <= i ) {
+
+                tie( oldLoc,newLoc ) = optionVec[option-1];
+                validOption = true;
+
+            }
+
+            if ( !validOption )
                 printMoveError();
 
         }
 
-        tuple<int,int> oldLoc = make_tuple(row,col);
-        ////////////////////////////////////////////////////////////////////// necessary?
-        if ( tempPiece->validJump == false )
-            multiJump = false;
-        multiJump = moveResult( oldLoc, tempTuple ); // this updates multiJump
+        multiJump = moveResult( oldLoc, newLoc );
+        printBoard();
 
-        // Updates values for multijump
+        // Resets for multijump
         if ( multiJump ) {
 
-            validAction = false;
-            row = int(userInput[0]) - 97;
-            col = userInput[1] - '1';
-            tempPiece = gameboard[row][col];
-            cout << "Another jump is available!" << "\n" << endl;
+            pieceLocs.clear();
+            optionVec.clear();
+            cout << "Another jump is available!" << endl;
 
         }
-
-        printBoard();
 
     }
 
@@ -960,7 +966,9 @@ bool board::moveResult( tuple<int,int> start, tuple<int,int> destination ) {
 
     // Moves the piece pointer from original location to new location
     gameboard[ newRow ][ newCol ] = gameboard[ oldRow ][ oldCol ];
-    gameboard[ newRow ][ newCol ]->loc = destination;   // Updates the location of piece
+
+    // Updates the location of piece
+    gameboard[ newRow ][ newCol ]->loc = destination;
     tempBool = gameboard[ newRow ][ newCol ]->checkPromotion(*this);
 
     // Reset piece and calculate valid actions in new location
@@ -1002,7 +1010,7 @@ bool board::moveResult( tuple<int,int> start, tuple<int,int> destination ) {
         return false;
 
     // Continue turn if piece has another jump available
-    if ( gameboard[newRow][newCol]->validJump ) {
+    if ( gameboard[ newRow ][ newCol ]->validJump ) {
 
         multiJumps.insert( gameboard[ newRow ][ newCol ] );
         return true;
@@ -2091,23 +2099,6 @@ void board::printBoard() {
         }
 
         cout << "\n";
-
-    }
-
-    cout << endl;
-
-}
-
-
-// Prints the available moves for the player
-void board::printMoves() {
-
-    int row,col;
-
-    for( auto iter : whiteMoves ) {
-
-        tie(row,col) = iter->loc;
-        cout << char(row + 97) << col+1 << endl;
 
     }
 
