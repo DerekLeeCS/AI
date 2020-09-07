@@ -14,7 +14,7 @@ using std::tuple;
 using std::shared_ptr;
 
 
-namespace pieceVals {
+namespace checkersVals {
 
     // Minimax Search
     #define REMAINING_TIME_LIMIT        0.05
@@ -45,6 +45,7 @@ namespace pieceVals {
 class board {
 
 public:
+
     //////////////////// Member Functions ////////////////////
 
     // Constructor
@@ -54,53 +55,13 @@ public:
     class piece; // Object class for pieces
 
     void specialBoard(); // For testing boards
-
     void playGame();
-    void playerMove();
-    void computerMove();
-
-    void endTurn(); // Series of actions to be taken at the end of a turn
-
-    // Returns a pointer to the set of pieces that can be moved
-    unordered_set< shared_ptr<piece> >* returnPieces();
-
-    // Performs a specified move
-    // If another jump is possible, returns true; otherwise, returns false
-    bool moveResult( tuple<int,int>, tuple<int,int> );
-
-    // Returns a list of pointers to pieces affected by a move
-    list< shared_ptr< piece > > affectedPieces( tuple<int,int>, tuple<int,int> );
-
-    // Isolates a board for iterative deepening
-    // Used in minimax
-    void isolateBoard( tuple<int,int>, tuple<int,int> );
-
-    // Checks moves of a specific piece
-    void checkMoves( shared_ptr<piece> & );
-
-    // Checks moves of pieces affected by curPiece's move
-    void checkDiagMoves( shared_ptr<piece> &, tuple<int,int>, bool );
-
-    // Checks if a row/column is within the board
-    // If valid, returns true; otherwise, returns false
-    bool validLoc( int );
-
-    // Updates the current score of the board
-    void heuristic();
-
-    // Checks the closest enemy piece to a king
-    // Returns an int representing the number of moves needed to reach that piece
-    int kingDistance( shared_ptr<piece> & );
-
-    // Checks if the game is at a terminal state
-    bool terminalState( float );
-
-    float minimax( board &, int, bool, float, float );
 
 
     class piece {
 
     public:
+
         piece();
         piece( bool color, int type );  // Regular constructor
         piece( bool filler );           // Filler constructor
@@ -142,6 +103,7 @@ public:
 
 
 private:
+
     //////////////////// Data Members ////////////////////
 
     shared_ptr< piece > gameboard[8][8]; // The board
@@ -184,9 +146,54 @@ private:
     int redKings = 0;
     int whiteMen = 0;
     int whiteKings = 0;
+
     // Number of men on the last row
     int redLast = 0;
     int whiteLast = 0;
+
+
+    ////////// Private Functions //////////
+
+    void computerMove();
+    void playerMove();
+    void endTurn();     // Series of actions to be taken at the end of a turn
+
+    // Alpha-beta pruning with iterative deepening
+    float minimax( board &, int, bool, float, float );
+
+    // Isolates a board for iterative deepening
+    // Used in minimax
+    void isolateBoard( tuple<int,int>, tuple<int,int> );
+
+    // Returns a list of pointers to pieces affected by a move
+    list< shared_ptr< piece > > affectedPieces( tuple<int,int>, tuple<int,int> );
+
+    // Returns a pointer to the set of pieces that can be moved
+    unordered_set< shared_ptr<piece> >* returnPieces();
+
+    // Performs a specified move
+    // If another jump is possible, returns true; otherwise, returns false
+    bool moveResult( tuple<int,int>, tuple<int,int> );
+
+    // Checks moves of a specific piece
+    void checkMoves( shared_ptr<piece> & );
+
+    // Checks moves of pieces affected by curPiece's move
+    void checkDiagMoves( shared_ptr<piece> &, tuple<int,int>, bool );
+
+    // Updates the current score of the board
+    void heuristic();
+
+    // Checks the closest enemy piece to a king
+    // Returns an int representing the number of moves needed to reach that piece
+    int kingDistance( shared_ptr<piece> & );
+
+    // Checks if the game is at a terminal state
+    bool terminalState( float );
+
+    // Checks if a row/column is within the board
+    // If valid, returns true; otherwise, returns false
+    bool validLoc( int );
 
 
     ////////// Display Functions //////////

@@ -1,12 +1,11 @@
 #include "checkers.h"
 #include <iostream>
-#include <list>
-#include <set>
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
 #include <windows.h>
 #include <wincon.h>
+
 
 using std::make_tuple;
 using std::get;
@@ -15,25 +14,23 @@ using std::remove;
 using std::max;
 using std::min;
 using std::make_shared;
-using std::list;
-using std::set;
 using std::cin;
 using std::cout;
 using std::endl;
 
-using namespace pieceVals;
 
+using namespace checkersVals;
+
+
+#define DEBUG_BOOL                  0   // If debugging, 1; Otherwise, 0
 #define FOREGROUND_CYAN		        (FOREGROUND_BLUE | FOREGROUND_GREEN)
 #define FOREGROUND_MAGENTA		    (FOREGROUND_RED | FOREGROUND_BLUE)
 #define FOREGROUND_WHITE   	        (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN)
 
-#define DEBUG_BOOL                  0   // If debugging, 1; Otherwise, 0
-
-
 
 ///////////////////////////////////// Colored Output /////////////////////////////////////
 
-// Code found from
+// Code from:
 // https://stackoverflow.com/questions/25559077/how-to-get-background-color-back-to-previous-color-after-use-of-std-handle
 void SetConsoleColour( WORD* Attributes, DWORD Colour ) {
 
@@ -51,7 +48,12 @@ void ResetConsoleColour( WORD Attributes ) {
 
 }
 
-int states = 0; // To check how many states minimax searched through
+int states = 0;         // Used during debugging to check how many states minimax searched through
+
+// If there is only one valid move, make it immediately
+// Used during minimax search to check if there is a single move available
+bool singleMove = true;
+
 
 
 ///////////////////////////////////// Piece /////////////////////////////////////
@@ -220,6 +222,23 @@ bool board::piece::checkPromotion( board &owner ) {
     }
     else
         return false;
+
+}
+
+
+// Returns list of valid actions for a piece
+list< tuple<int,int> >* board::piece::returnActions() {
+
+    list< tuple<int,int> > *possibleActions;
+
+    // If piece has a validJump, returns jump list
+    if ( this->validJump )
+        possibleActions = &jumps;
+    // Else, returns move list
+    else
+        possibleActions = &moves;
+
+    return possibleActions;
 
 }
 
@@ -467,221 +486,6 @@ void board::playGame() {
 }
 
 
-// Handles alpha-beta pruning minimax search
-float board::minimax(board &originalBoard, int depth, bool maxPlayer, float alpha, float beta) {
-
-    // Counts number of states visited
-    // Used for debugging (because I was curious)
-    states++;
-
-    // Updates elapsed time and returns if time limit is exceeded
-    this->endTime = std::chrono::system_clock::now();
-    elapsed_seconds = this->endTime - this->startTime;
-
-    if ( this->computerTime - elapsed_seconds.count() < REMAINING_TIME_LIMIT )
-        return TIME_LIMIT_EXCEEDED;
-
-    // Reached max depth and starts returning from recursion
-    if ( depth == originalBoard.maxDepth ) {
-
-        originalBoard.heuristic();                      // Calculates score for current state
-        originalBoard.bestMoves = originalBoard.moves;  // Sets bestMoves equal to moves taken to reach current state
-
-        return originalBoard.score;  // Returns score for alpha-beta pruning
-
-    }
-
-    // Makes a copy of the parent board
-    board tempBoard = originalBoard;
-    unordered_set< shared_ptr<piece> > posMoves = *( tempBoard.returnPieces() );
-    list< tuple<int,int> > *possibleActions;
-
-    bool multiJump,newPath;
-    float val,bestVal;
-    int randNum;
-
-    if ( maxPlayer )
-        bestVal = VAL_MIN;
-    else
-        bestVal = VAL_MAX;
-
-    for ( auto iter : posMoves ) {
-
-        possibleActions = iter->returnActions();
-
-        for ( auto iter2 : *possibleActions ) {
-
-            // Because board class contains pointers to pieces, copying board class copies the pointers
-            // Does not make copies of pieces, so pointers will still point to original pieces
-            // Need to "isolate" tempBoard from originalBoard because operations on tempBoard will
-            //      affect pieces of originalBoard through pointers
-            tempBoard.isolateBoard( iter->loc, iter2 );
-
-            // Creates a tuple containing piece's old location and new location
-            // Pushes into move list
-            //      Stores moves taken to reach current state
-            tempBoard.moves.push_back( make_tuple(iter->loc,iter2) );
-            multiJump = tempBoard.moveResult(iter->loc,iter2);
-
-            // If there is only one valid move, make it immediately
-            //      Only applies if it is Depth 0 and there is no additional jump available
-            if ( depth == 0 ) {
-
-                if( posMoves.size() == 1 && possibleActions->size() == 1 && !multiJump ) {
-
-                    originalBoard.bestMoves = tempBoard.moves;
-                    return SINGLE_MOVE;
-
-                }
-
-            }
-
-            if ( multiJump )
-                val = tempBoard.minimax( tempBoard, depth, maxPlayer, alpha, beta );    // Same player as now
-            else {
-
-                tempBoard.redTurn = !(tempBoard.redTurn);
-                val = tempBoard.minimax( tempBoard, depth+1, !maxPlayer, alpha, beta ); // Switch players
-
-            }
-
-            // Returns from depth if the time limited is exceeded
-            if ( val == TIME_LIMIT_EXCEEDED )
-                return val;
-
-            // Alpha-beta Pruning
-            newPath = false;
-
-            if ( maxPlayer ) {
-
-                if ( bestVal <= val ) {
-
-                    bestVal = val;
-                    newPath = true;
-
-                }
-
-                if ( alpha < bestVal )
-                    alpha = bestVal;
-                else if ( alpha == bestVal ) {
-
-                    randNum = rand()%2; // Choose randomly if two positions are equivalent
-                    if ( randNum )
-                        newPath = false;
-
-                }
-                else
-                    newPath = false;
-
-            }
-            else {
-
-                if ( bestVal >= val ) {
-
-                    bestVal = val;
-                    newPath = true;
-
-                }
-
-                if ( beta > bestVal )
-                    beta = bestVal;
-                else if( beta == bestVal ) {
-
-                    randNum = rand()%2; // Choose randomly if two positions are equivalent
-                    if ( randNum )
-                        newPath = false;
-
-                }
-                else
-                    newPath = false;
-
-            }
-
-            if ( beta <= alpha )
-                goto prune;
-
-            if ( newPath )
-                originalBoard.bestMoves = tempBoard.bestMoves;
-
-            // Reset tempBoard
-            tempBoard = originalBoard;
-
-        }
-
-    }
-
-prune:
-    return bestVal;
-
-}
-
-
-// Returns set of pieces that can take an action
-unordered_set< shared_ptr<board::piece> >* board::returnPieces() {
-
-    int jumpLen;
-    unordered_set< shared_ptr<board::piece> > *possibleMoves;
-
-    // A multiJump is when a jump took place and the same piece is available for another jump
-    // Stores a pointer to that piece
-    // Should contain a piece only if previous action was a jump and piece has oppoprtunity for another jump
-    jumpLen = multiJumps.size();
-
-    // If multiJump is not available
-    if ( jumpLen == 0 ) {
-
-        // Checks for board jump set size
-        // If board jump set is empty, no valid jumps
-            // Will return board move set
-        // If board jump set is not empty, valid jumps
-            // Will return board jump set
-        if ( redTurn ) {
-
-            jumpLen = redJumps.size();
-            if( jumpLen == 0 )
-                possibleMoves = &redMoves;
-            else
-                possibleMoves = &redJumps;
-
-        }
-        else {
-
-            jumpLen = whiteJumps.size();
-            if( jumpLen == 0 )
-                possibleMoves = &whiteMoves;
-            else
-                possibleMoves = &whiteJumps;
-
-        }
-
-    }
-
-    // If multiJump is available
-    else
-        possibleMoves = &multiJumps;
-
-    return possibleMoves;
-
-}
-
-
-// Returns list of valid actions for a piece
-list< tuple<int,int> >* board::piece::returnActions() {
-
-    list< tuple<int,int> > *possibleActions;
-
-    // If piece has a validJump, returns jump list
-    if ( this->validJump )
-        possibleActions = &jumps;
-    // Else, returns move list
-    else
-        possibleActions = &moves;
-
-    return possibleActions;
-
-}
-
-
 // Handles actions for computer
 void board::computerMove() {
 
@@ -699,6 +503,10 @@ void board::computerMove() {
     this->maxDepth = 1;
     float futureScore, tempScore = -12345;
     states = 0;
+    singleMove = true;  // Updated during minimax search
+                        // Do not need to reset to true during each iteration b/c
+                        //      If false, will remain false for all future iterations
+                        //      If true, will break out of iterative deepening
 
     // Iterative deepening
     while (1) {
@@ -939,86 +747,212 @@ void board::endTurn() {
 }
 
 
-// Checks if score represents a terminal state
-bool board::terminalState( float tempScore ) {
+// Handles alpha-beta pruning minimax search
+float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alpha, float beta ) {
 
-    if ( tempScore == VICTORY_RED_MOVE || tempScore == VICTORY_RED_PIECE || tempScore == VICTORY_WHITE_MOVE || tempScore == VICTORY_WHITE_PIECE )
-        return true;
+    // Used for debugging (and because I was curious)
+    // Counts number of states visited
+    if ( DEBUG_BOOL )
+        states++;
+
+    // Updates elapsed time and returns if time limit is exceeded
+    this->endTime = std::chrono::system_clock::now();
+    elapsed_seconds = this->endTime - this->startTime;
+
+    if ( this->computerTime - elapsed_seconds.count() < REMAINING_TIME_LIMIT )
+        return TIME_LIMIT_EXCEEDED;
+
+    // Reached max depth and starts returning from recursion
+    if ( depth == originalBoard.maxDepth ) {
+
+        originalBoard.heuristic();                      // Calculates score for current state
+        originalBoard.bestMoves = originalBoard.moves;  // Sets bestMoves equal to moves taken to reach current state
+
+        return originalBoard.score;  // Returns score for alpha-beta pruning
+
+    }
+
+    // Makes a copy of the parent board
+    board tempBoard = originalBoard;
+    unordered_set< shared_ptr<piece> > posMoves = *( tempBoard.returnPieces() );
+    list< tuple<int,int> > *possibleActions;
+
+    bool multiJump,newPath;
+    float val,bestVal;
+    int randNum;
+
+    if ( maxPlayer )
+        bestVal = VAL_MIN;
     else
-        return false;
+        bestVal = VAL_MAX;
+
+    // First check for singleMove
+    if ( depth == 0 ) {
+
+        if( posMoves.size() != 1 )
+            singleMove = false;
+
+    }
+
+    for ( auto iter : posMoves ) {
+
+        possibleActions = iter->returnActions();
+
+        // Second check for singleMove
+        if ( depth == 0 ) {
+
+            if( possibleActions->size() != 1 )
+                singleMove = false;
+
+        }
+
+        for ( auto iter2 : *possibleActions ) {
+
+            // Because board class contains pointers to pieces, copying board class copies the pointers
+            // Does not make copies of pieces, so pointers will still point to original pieces
+            // Need to "isolate" tempBoard from originalBoard because operations on tempBoard will
+            //      affect pieces of originalBoard through pointers
+            tempBoard.isolateBoard( iter->loc, iter2 );
+
+            // Creates a tuple containing piece's old location and new location
+            // Adds to moves taken to reach current state
+            tempBoard.moves.push_back( make_tuple( iter->loc, iter2 ) );
+            multiJump = tempBoard.moveResult( iter->loc, iter2 );
+
+            // Final check for singleMove
+            //      Only applies if it is Depth 0 and there is no additional jump available
+            if ( depth == 0 ) {
+
+                if( singleMove && !multiJump ) {
+
+                    originalBoard.bestMoves = tempBoard.moves;
+                    return SINGLE_MOVE;
+
+                }
+
+            }
+
+            if ( multiJump )
+                val = tempBoard.minimax( tempBoard, depth, maxPlayer, alpha, beta );    // Same player as now
+            else {
+
+                tempBoard.redTurn = !(tempBoard.redTurn);
+                val = tempBoard.minimax( tempBoard, depth+1, !maxPlayer, alpha, beta ); // Switch players
+
+            }
+
+            // Returns from depth if the time limited is exceeded
+            if ( val == TIME_LIMIT_EXCEEDED )
+                return val;
+
+            // Alpha-beta Pruning
+            newPath = false;
+
+            if ( maxPlayer ) {
+
+                if ( bestVal <= val ) {
+
+                    bestVal = val;
+                    newPath = true;
+
+                }
+
+                if ( alpha < bestVal )
+                    alpha = bestVal;
+                else if ( alpha == bestVal ) {
+
+                    randNum = rand()%2; // Choose randomly if two positions are equivalent
+                    if ( randNum )
+                        newPath = false;
+
+                }
+                else
+                    newPath = false;
+
+            }
+            else {
+
+                if ( bestVal >= val ) {
+
+                    bestVal = val;
+                    newPath = true;
+
+                }
+
+                if ( beta > bestVal )
+                    beta = bestVal;
+                else if( beta == bestVal ) {
+
+                    randNum = rand()%2; // Choose randomly if two positions are equivalent
+                    if ( randNum )
+                        newPath = false;
+
+                }
+                else
+                    newPath = false;
+
+            }
+
+            if ( beta <= alpha )
+                goto prune;
+
+            if ( newPath )
+                originalBoard.bestMoves = tempBoard.bestMoves;
+
+            // Reset tempBoard
+            tempBoard = originalBoard;
+
+        }
+
+    }
+
+prune:
+    return bestVal;
 
 }
 
 
-// Performs a specified action
-    // Start tuple represents original location of piece
-    // End tuple represents new location after move
-// If there is another valid jump available, return true; otherwise, return false
-bool board::moveResult( tuple<int,int> start, tuple<int,int> destination ) {
+// Creates a copy of pieces potentially affected by an action from start to destination
+void board::isolateBoard( tuple<int,int> start, tuple<int,int> destination ) {
 
-    int oldRow,oldCol,newRow,newCol;
-    tie( oldRow, oldCol ) = start;
-    tie( newRow, newCol ) = destination;
+    int row,col;
+    list< shared_ptr<board::piece> > pieceList;
+    shared_ptr<piece> tempPiece;
 
-    // Checks if piece is making a jump
-    bool jump,tempBool;
-    jump = gameboard[oldRow][oldCol]->validJump;
+    // Gets a list of potential affected pieces
+    pieceList = affectedPieces(start,destination);
 
-    // Moves the piece pointer from original location to new location
-    gameboard[ newRow ][ newCol ] = gameboard[ oldRow ][ oldCol ];
+    for ( auto iter : pieceList ) {
 
-    // Updates the location of piece
-    gameboard[ newRow ][ newCol ]->loc = destination;
-    tempBool = gameboard[ newRow ][ newCol ]->checkPromotion(*this);
+        tie( row, col ) = iter->loc;
 
-    // Reset piece and calculate valid actions in new location
-    gameboard[ newRow ][ newCol ]->resetPiece();
+        // Deletes pointers to old pieces
+        iter->clearPiece(*this);
+        iter->updateCount(*this,true);
 
-    // Piece is no longer in original location, so replace with empty piece
-    gameboard[ oldRow ][ oldCol ] = emptyPiece;
+        // Makes a copy of the piece
+        gameboard[row][col] = make_shared<piece>( piece(*iter) );
 
-    // If piece made a jump, remove captured piece
-    if ( jump ) {
+        // Replaces with pointers to new pieces
+        if ( iter->validMove ) {
 
-        // Calculate location of captured piece
-        int jumpRow = oldRow + (newRow - oldRow)/2;
-        int jumpCol = oldCol + (newCol - oldCol)/2;
+            if ( iter->color == COLOR_RED_VAL )
+                redMoves.insert( gameboard[row][col] );
+            else
+                whiteMoves.insert( gameboard[row][col] );
 
-        // Remove piece from board sets and decrement counts
-        gameboard[ jumpRow ][ jumpCol ]->clearPiece(*this);
+        }
 
-        // Replace captured piece pointer with empty piece pointer
-        gameboard[ jumpRow ][ jumpCol ] = emptyPiece;
-    }
+        if ( iter->validJump ) {
 
-    // Checks if any diagonal pieces were affected by action taken
-        // E.g. If a piece was captured, a piece diagonal to it
-        //      may be able to move to the captured piece's location
-    checkDiagMoves( gameboard[ newRow ][ newCol ], start, jump );
+            if ( iter->color == COLOR_RED_VAL )
+                redJumps.insert( gameboard[row][col] );
+            else
+                whiteJumps.insert( gameboard[row][col] );
 
-    // Checks actions for piece in new location
-    checkMoves( gameboard[newRow][newCol] );
-
-    // Empty the multiJump set after every move
-    multiJumps.clear();
-
-    // Ends turn after promotion
-    if ( tempBool )
-        return false;
-    // Ends turn if piece did not jump
-    if ( !jump )
-        return false;
-
-    // Continue turn if piece has another jump available
-    if ( gameboard[ newRow ][ newCol ]->validJump ) {
-
-        multiJumps.insert( gameboard[ newRow ][ newCol ] );
-        return true;
+        }
 
     }
-    // End turn otherwise
-    else
-        return false;
 
 }
 
@@ -1113,47 +1047,124 @@ list< shared_ptr<board::piece> > board::affectedPieces( tuple<int,int> start, tu
 }
 
 
-// Creates a copy of pieces potentially affected by an action from start to destination
-void board::isolateBoard( tuple<int,int> start, tuple<int,int> destination ) {
+// Returns set of pieces that can take an action
+unordered_set< shared_ptr<board::piece> >* board::returnPieces() {
 
-    int row,col;
-    list< shared_ptr<board::piece> > pieceList;
-    shared_ptr<piece> tempPiece;
+    int jumpLen;
+    unordered_set< shared_ptr<board::piece> > *possibleMoves;
 
-    // Gets a list of potential affected pieces
-    pieceList = affectedPieces(start,destination);
+    // A multiJump is when a jump took place and the same piece is available for another jump
+    // Stores a pointer to that piece
+    // Should contain a piece only if previous action was a jump and piece has oppoprtunity for another jump
+    jumpLen = multiJumps.size();
 
-    for ( auto iter : pieceList ) {
+    // If multiJump is not available
+    if ( jumpLen == 0 ) {
 
-        tie( row, col ) = iter->loc;
+        // Checks for board jump set size
+        // If board jump set is empty, no valid jumps
+            // Will return board move set
+        // If board jump set is not empty, valid jumps
+            // Will return board jump set
+        if ( redTurn ) {
 
-        // Deletes pointers to old pieces
-        iter->clearPiece(*this);
-        iter->updateCount(*this,true);
-
-        // Makes a copy of the piece
-        gameboard[row][col] = make_shared<piece>( piece(*iter) );
-
-        // Replaces with pointers to new pieces
-        if ( iter->validMove ) {
-
-            if ( iter->color == COLOR_RED_VAL )
-                redMoves.insert( gameboard[row][col] );
+            jumpLen = redJumps.size();
+            if( jumpLen == 0 )
+                possibleMoves = &redMoves;
             else
-                whiteMoves.insert( gameboard[row][col] );
+                possibleMoves = &redJumps;
 
         }
+        else {
 
-        if ( iter->validJump ) {
-
-            if ( iter->color == COLOR_RED_VAL )
-                redJumps.insert( gameboard[row][col] );
+            jumpLen = whiteJumps.size();
+            if( jumpLen == 0 )
+                possibleMoves = &whiteMoves;
             else
-                whiteJumps.insert( gameboard[row][col] );
+                possibleMoves = &whiteJumps;
 
         }
 
     }
+
+    // If multiJump is available
+    else
+        possibleMoves = &multiJumps;
+
+    return possibleMoves;
+
+}
+
+
+// Performs a specified action
+    // Start tuple represents original location of piece
+    // End tuple represents new location after move
+// If there is another valid jump available, return true; otherwise, return false
+bool board::moveResult( tuple<int,int> start, tuple<int,int> destination ) {
+
+    int oldRow,oldCol,newRow,newCol;
+    tie( oldRow, oldCol ) = start;
+    tie( newRow, newCol ) = destination;
+
+    // Checks if piece is making a jump
+    bool jump,tempBool;
+    jump = gameboard[oldRow][oldCol]->validJump;
+
+    // Moves the piece pointer from original location to new location
+    gameboard[ newRow ][ newCol ] = gameboard[ oldRow ][ oldCol ];
+
+    // Updates the location of piece
+    gameboard[ newRow ][ newCol ]->loc = destination;
+    tempBool = gameboard[ newRow ][ newCol ]->checkPromotion(*this);
+
+    // Reset piece and calculate valid actions in new location
+    gameboard[ newRow ][ newCol ]->resetPiece();
+
+    // Piece is no longer in original location, so replace with empty piece
+    gameboard[ oldRow ][ oldCol ] = emptyPiece;
+
+    // If piece made a jump, remove captured piece
+    if ( jump ) {
+
+        // Calculate location of captured piece
+        int jumpRow = oldRow + (newRow - oldRow)/2;
+        int jumpCol = oldCol + (newCol - oldCol)/2;
+
+        // Remove piece from board sets and decrement counts
+        gameboard[ jumpRow ][ jumpCol ]->clearPiece(*this);
+
+        // Replace captured piece pointer with empty piece pointer
+        gameboard[ jumpRow ][ jumpCol ] = emptyPiece;
+    }
+
+    // Checks if any diagonal pieces were affected by action taken
+        // E.g. If a piece was captured, a piece diagonal to it
+        //      may be able to move to the captured piece's location
+    checkDiagMoves( gameboard[ newRow ][ newCol ], start, jump );
+
+    // Checks actions for piece in new location
+    checkMoves( gameboard[newRow][newCol] );
+
+    // Empty the multiJump set after every move
+    multiJumps.clear();
+
+    // Ends turn after promotion
+    if ( tempBool )
+        return false;
+    // Ends turn if piece did not jump
+    if ( !jump )
+        return false;
+
+    // Continue turn if piece has another jump available
+    if ( gameboard[ newRow ][ newCol ]->validJump ) {
+
+        multiJumps.insert( gameboard[ newRow ][ newCol ] );
+        return true;
+
+    }
+    // End turn otherwise
+    else
+        return false;
 
 }
 
@@ -1639,6 +1650,29 @@ int board::kingDistance( shared_ptr<piece> &curPiece ) {
     }
 
     return minDistance-1;
+
+}
+
+
+// Checks if score represents a terminal state
+bool board::terminalState( float tempScore ) {
+
+    if ( tempScore == VICTORY_RED_MOVE || tempScore == VICTORY_RED_PIECE || tempScore == VICTORY_WHITE_MOVE || tempScore == VICTORY_WHITE_PIECE )
+        return true;
+    else
+        return false;
+
+}
+
+
+// Checks if a row/column is within the board
+// If valid, returns true; otherwise, returns false
+bool board::validLoc( int loc ) {
+
+    if ( 0 <= loc && loc <= 7 )
+        return true;
+    else
+        return false;
 
 }
 
@@ -2164,17 +2198,4 @@ bool board::validateInput() {
         return false;
 
 }
-
-
-// Checks if a row/column is within the board
-// If valid, returns true; otherwise, returns false
-bool board::validLoc( int loc ) {
-
-    if ( 0 <= loc && loc <= 7 )
-        return true;
-    else
-        return false;
-
-}
-
 
