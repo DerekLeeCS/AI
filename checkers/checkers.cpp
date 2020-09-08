@@ -28,6 +28,11 @@ using namespace checkersVals;
 #define FOREGROUND_WHITE   	        (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN)
 
 
+// Custom sorting function used to organize vectors based on the first location of the first tuple
+// Used in playerMove()
+bool sortVecOfVecs( vector< tuple< tuple<int,int>, tuple<int,int> > > &, vector< tuple< tuple<int,int>, tuple<int,int> > > & );
+
+
 ///////////////////////////////////// Colored Output /////////////////////////////////////
 
 // Code from:
@@ -48,7 +53,7 @@ void ResetConsoleColour( WORD Attributes ) {
 
 }
 
-int states = 0;         // Used during debugging to check how many states minimax searched through
+unsigned int states = 0;    // Used to check how many states minimax searched through
 
 // If there is only one valid move, make it immediately
 // Used during minimax search to check if there is a single move available
@@ -410,7 +415,7 @@ void board::specialBoard() {
         }
     }
     */
-
+    /*
     // Computer make double jump choice
     gameboard[3][0] = gameboard[1][0];
     gameboard[3][0]->loc = make_tuple(3,0);
@@ -425,13 +430,13 @@ void board::specialBoard() {
     gameboard[4][7] = gameboard[6][5];
     gameboard[4][7]->loc = make_tuple(4,7);
     gameboard[6][5] = emptyPiece;
+    */
 
-    /*
     // Double Jump
     gameboard[4][5] = gameboard[1][4];
     gameboard[4][5]->loc = make_tuple(4,5);
     gameboard[1][4] = emptyPiece;
-    */
+
     /*
     // Two Possible Jumps
     gameboard[3][0] = gameboard[2][1];
@@ -561,8 +566,8 @@ void board::computerMove() {
     //           will not loop
     while ( multiJump ) {
 
-        multiJump = moveResult( get<0>( this->bestMoves.front() ), get<1>( this->bestMoves.front() ) );
-        this->bestMoves.pop_front(); // Removes action that was just performed
+        multiJump = this->moveResult( get<0>( this->bestMoves.front() ), get<1>( this->bestMoves.front() ) );
+        this->bestMoves.pop_front();    // Removes action that was just performed
         printBoard();
 
     }
@@ -570,7 +575,6 @@ void board::computerMove() {
     // Required statistics
     cout << "Maximum Depth: " << this->maxDepth << "\n"
          << "Time Taken: " << ( this->elapsed_seconds ).count() << endl;
-
 
     endTurn();
 
@@ -580,113 +584,91 @@ void board::computerMove() {
 // Handles player actions
 void board::playerMove() {
 
-    unordered_set< shared_ptr<piece> > possiblePieces;
-    vector< tuple<int,int> > pieceLocs;
-    shared_ptr<piece> tempPiece;
-    int curRow, curCol, tempRow, tempCol, option;
-    vector< tuple< tuple<int,int>, tuple<int,int> > > optionVec;
-    tuple<int,int> oldLoc, newLoc;
+    // Reset vector of vectors of actions
+    this->vecOfActions.clear();
+
+    // Get vector of jumps
+    vector< tuple< tuple<int,int>, tuple<int,int> > > curVecOfActions, vecChosenActions;
+    this->getPlayerActions( *this, curVecOfActions );
+
+    // Cleans up the vector for the player
+    sort( this->vecOfActions.begin(), this->vecOfActions.end(), sortVecOfVecs );
+
+    bool validOption = false;
+    int i=0, option;
     string input;
 
-    bool multiJump = true;
+    // While player has not selected a valid action
+    while ( !validOption ) {
 
-    while ( multiJump ) {
+        cout << "Select an option:" << "\n";
 
-        // Gets pieces that can take a valid action
-        possiblePieces = *( this->returnPieces() );
+        // Iterates through sequences of actions
+        for ( auto iter : this->vecOfActions ) {
 
-        // Cleans up the list for the player
-        for ( auto iter : possiblePieces )
-            pieceLocs.push_back( iter->loc );
-        sort( pieceLocs.begin(), pieceLocs.end() );
+            // Prints starting piece
+            cout << i+1 << ": " << char( get<0>( get<0>( iter.front() ) )+97 ) << get<1>( get<0>( iter.front() ) )+1;
 
-        bool validOption = false;
+            // Prints following pieces
+            for( auto iter2 : iter )
+                cout << " -> " << char( get<0>( get<1>( iter2 ) )+97 ) << get<1>( get<1>( iter2 ) )+1;
 
-        // While player has not selected a valid action
-        while ( !validOption ) {
-
-            cout << "Select an option:" << "\n";
-
-            int i=0;
-
-            // Outputs the list
-            for ( auto iter : pieceLocs ) {
-
-                curRow = get<0>(iter);
-                curCol = get<1>(iter);
-                tempPiece = gameboard[ curRow ][ curCol ];
-
-                for ( auto iter2 : *( tempPiece->returnActions() ) ) {
-
-                    i++;
-                    tempRow = get<0>(iter2);
-                    tempCol = get<1>(iter2);
-
-                    optionVec.push_back( make_tuple( make_tuple( curRow, curCol ), make_tuple( tempRow, tempCol ) ) );
-                    cout << i << ": " << char( curRow+97 ) << curCol+1 << " -> " << char( tempRow+97 ) << tempCol+1 << "\n";
-
-                }
-
-            }
-
-            cout << endl;
-
-            // Waits for player input
-            cin >> input;
-            cout << endl;
-
-            // Checks for valid input
-            if ( validateInput() )
-                continue;
-
-            // Checks for specific commands
-            if ( input == "help" ) {
-
-                printHelp();
-                continue;
-
-            }
-            else if ( input == "board" ) {
-
-                printBoard();
-                continue;
-
-            }
-
-            // Gets action from input
-            try {
-
-                option = std::stoi(input);
-
-            } catch( ... ) {
-
-                option = 0;
-
-            }
-
-            if ( 1 <= option && option <= i ) {
-
-                tie( oldLoc,newLoc ) = optionVec[option-1];
-                validOption = true;
-
-            }
-
-            if ( !validOption )
-                printMoveError();
+            cout << "\n";
+            i++;
 
         }
 
-        multiJump = moveResult( oldLoc, newLoc );
-        printBoard();
+        cout << endl;
 
-        // Resets for multijump
-        if ( multiJump ) {
+        // Waits for player input
+        cin >> input;
+        cout << endl;
 
-            pieceLocs.clear();
-            optionVec.clear();
-            cout << "Another jump is available!" << endl;
+        // Checks for valid input
+        if ( this->validateInput() )
+            continue;
+
+        // Checks for specific commands
+        if ( input == "help" ) {
+
+            this->printHelp();
+            continue;
 
         }
+        else if ( input == "board" ) {
+
+            this->printBoard();
+            continue;
+
+        }
+
+        // Gets action from input
+        try {
+
+            option = std::stoi(input);
+
+        } catch( ... ) {
+
+            option = 0;
+
+        }
+
+        if ( 1 <= option && option <= i ) {
+
+            vecChosenActions = this->vecOfActions[ option-1 ];
+            validOption = true;
+
+        }
+
+        if ( !validOption )
+            this->printMoveError();
+
+    }
+
+    for ( unsigned int j=0; j<vecChosenActions.size(); j++ ) {
+
+        this->moveResult( get<0>( vecChosenActions[j] ), get<1>( vecChosenActions[j] ) );
+        this->printBoard();
 
     }
 
@@ -701,7 +683,7 @@ void board::endTurn() {
     heuristic();    // Calculates score for the current state
 
     // Checks if score represents a terminal state
-    if ( terminalState(this->score) ) {
+    if ( terminalState( this->score ) ) {
 
         // Outputs terminal state message
         if ( this->score == VICTORY_RED_MOVE )
@@ -750,10 +732,8 @@ void board::endTurn() {
 // Handles alpha-beta pruning minimax search
 float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alpha, float beta ) {
 
-    // Used for debugging (and because I was curious)
-    // Counts number of states visited
-    if ( DEBUG_BOOL )
-        states++;
+    // Counts number of states visited (because I was curious)
+    states++;
 
     // Updates elapsed time and returns if time limit is exceeded
     this->endTime = std::chrono::system_clock::now();
@@ -2182,6 +2162,54 @@ void board::printMoveError() {
 }
 
 
+// Updates vecOfActions, representing available actions to the player, including multi-jumps
+void board::getPlayerActions( board &originalBoard, vector< tuple< tuple<int,int>, tuple<int,int> > > curVecOfJumps ) {
+
+    unordered_set< shared_ptr<piece> > possiblePieces = *( originalBoard.returnPieces() );
+    list< tuple<int,int> > *pieceActions;
+    vector< tuple< tuple<int,int>, tuple<int,int> > > tempVec;
+
+    bool multiJump;
+    board tempBoard;
+
+    // Iterate through all pieces available to perform an action
+    for ( auto iter : possiblePieces ) {
+
+        pieceActions = iter->returnActions();
+
+        // Iterate through all actions available for the piece
+        for( auto iter2 : *pieceActions ) {
+
+            // Copy originalBoard
+            tempBoard = originalBoard;
+            tempBoard.isolateBoard( iter->loc, iter2 );
+
+            // Copy actions leading to originalBoard
+            tempVec = curVecOfJumps;
+
+            // Add current action to vector
+            tempVec.push_back( make_tuple( iter->loc, iter2 ) );
+
+            // Apply action
+            multiJump = tempBoard.moveResult( iter->loc, iter2 );
+
+            if ( multiJump )
+                getPlayerActions( tempBoard, tempVec );
+            else
+                tempBoard.vecOfActions.push_back( tempVec );
+
+
+            // Copy tempBoard vector of vectors of jumps
+            //      Should have one additional vector of jumps
+            originalBoard.vecOfActions = tempBoard.vecOfActions;
+
+        }
+
+    }
+
+}
+
+
 // Ensures player input is a valid type
 // If invalid, returns true; otherwise, returns false
 bool board::validateInput() {
@@ -2199,3 +2227,19 @@ bool board::validateInput() {
 
 }
 
+
+// Custom sorting function used to organize vectors based on the first location of the first tuple
+bool sortVecOfVecs( vector< tuple< tuple<int,int>, tuple<int,int> > > &vecA, vector< tuple< tuple<int,int>, tuple<int,int> > > &vecB ) {
+
+    int rowA, colA, rowB, colB;
+    tie( rowA, colA ) = get<0>( vecA[0] );
+    tie( rowB, colB ) = get<0>( vecB[0] );
+
+    if ( rowA < rowB )
+        return true;
+    else if ( rowA == rowB )
+        return colA < colB;
+    else
+        return false;
+
+}

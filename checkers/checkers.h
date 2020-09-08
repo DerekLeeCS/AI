@@ -138,6 +138,8 @@ private:
     unordered_set< shared_ptr<piece> > whiteJumps;
     unordered_set< shared_ptr<piece> > multiJumps;
 
+    // Stores a vector of vectors representing a sequence of available jumps
+    vector< vector< tuple< tuple<int,int>, tuple<int,int> > > > vecOfActions;
 
     ////////// Count of pieces //////////
 
@@ -157,6 +159,9 @@ private:
     void computerMove();
     void playerMove();
     void endTurn();     // Series of actions to be taken at the end of a turn
+
+    // Updates vecOfActions, representing available actions to the player, including multi-jumps
+    void getPlayerActions( board &, vector< tuple< tuple<int,int>, tuple<int,int> > > );
 
     // Alpha-beta pruning with iterative deepening
     float minimax( board &, int, bool, float, float );
@@ -208,13 +213,13 @@ private:
     void printTimeSettings();   // Change computing time
     void printAddPiece();
     void printRemovePiece();
-    bool validateInput();       // Validates user input; if input is invalid, returns true; otherwise, returns false
-
 
     void printBoard();      // Prints the current board
     void printHelp();       // Prints a list of commands
     void printError();      // Prints an error message
     void printMoveError();  // Prints a move error message
+
+    bool validateInput();       // Validates user input; if input is invalid, returns true; otherwise, returns false
 
 };
 
