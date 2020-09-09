@@ -22,7 +22,7 @@ using std::endl;
 using namespace checkersVals;
 
 
-#define DEBUG_BOOL                  0   // If debugging, 1; Otherwise, 0
+#define DEBUG_BOOL                  1   // If debugging, 1; Otherwise, 0
 #define FOREGROUND_CYAN		        (FOREGROUND_BLUE | FOREGROUND_GREEN)
 #define FOREGROUND_MAGENTA		    (FOREGROUND_RED | FOREGROUND_BLUE)
 #define FOREGROUND_WHITE   	        (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN)
@@ -402,7 +402,7 @@ board::board() {
 // Used for testing
 // Alters the initial board
 void board::specialBoard() {
-    /*
+
     // Empty Board
     for(int i=0; i<8; i++)
     {
@@ -414,7 +414,7 @@ void board::specialBoard() {
                 gameboard[i][j] = emptyPiece;
         }
     }
-    */
+
     /*
     // Computer make double jump choice
     gameboard[3][0] = gameboard[1][0];
@@ -431,12 +431,12 @@ void board::specialBoard() {
     gameboard[4][7]->loc = make_tuple(4,7);
     gameboard[6][5] = emptyPiece;
     */
-
+    /*
     // Double Jump
     gameboard[4][5] = gameboard[1][4];
     gameboard[4][5]->loc = make_tuple(4,5);
     gameboard[1][4] = emptyPiece;
-
+    */
     /*
     // Two Possible Jumps
     gameboard[3][0] = gameboard[2][1];
@@ -729,6 +729,54 @@ void board::endTurn() {
 }
 
 
+// Updates vecOfActions, representing available actions to the player, including multi-jumps
+void board::getPlayerActions( board &originalBoard, vector< tuple< tuple<int,int>, tuple<int,int> > > curVecOfJumps ) {
+
+    unordered_set< shared_ptr<piece> > possiblePieces = *( originalBoard.returnPieces() );
+    list< tuple<int,int> > *pieceActions;
+    vector< tuple< tuple<int,int>, tuple<int,int> > > tempVec;
+
+    bool multiJump;
+    board tempBoard;
+
+    // Iterate through all pieces available to perform an action
+    for ( auto iter : possiblePieces ) {
+
+        pieceActions = iter->returnActions();
+
+        // Iterate through all actions available for the piece
+        for( auto iter2 : *pieceActions ) {
+
+            // Copy originalBoard
+            tempBoard = originalBoard;
+            tempBoard.isolateBoard( iter->loc, iter2 );
+
+            // Copy actions leading to originalBoard
+            tempVec = curVecOfJumps;
+
+            // Add current action to vector
+            tempVec.push_back( make_tuple( iter->loc, iter2 ) );
+
+            // Apply action
+            multiJump = tempBoard.moveResult( iter->loc, iter2 );
+
+            if ( multiJump )
+                getPlayerActions( tempBoard, tempVec );
+            else
+                tempBoard.vecOfActions.push_back( tempVec );
+
+
+            // Copy tempBoard vector of vectors of jumps
+            //      Should have one additional vector of jumps
+            originalBoard.vecOfActions = tempBoard.vecOfActions;
+
+        }
+
+    }
+
+}
+
+
 // Handles alpha-beta pruning minimax search
 float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alpha, float beta ) {
 
@@ -753,8 +801,8 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
     }
 
     // Makes a copy of the parent board
-    board tempBoard = originalBoard;
-    unordered_set< shared_ptr<piece> > posMoves = *( tempBoard.returnPieces() );
+    board tempBoard;
+    unordered_set< shared_ptr<piece> > posMoves = *( originalBoard.returnPieces() );
     list< tuple<int,int> > *possibleActions;
 
     bool multiJump,newPath;
@@ -792,6 +840,7 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
             // Does not make copies of pieces, so pointers will still point to original pieces
             // Need to "isolate" tempBoard from originalBoard because operations on tempBoard will
             //      affect pieces of originalBoard through pointers
+            tempBoard = originalBoard;
             tempBoard.isolateBoard( iter->loc, iter2 );
 
             // Creates a tuple containing piece's old location and new location
@@ -836,6 +885,8 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
                     newPath = true;
 
                 }
+                else
+                    continue;
 
                 if ( alpha < bestVal )
                     alpha = bestVal;
@@ -858,6 +909,8 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
                     newPath = true;
 
                 }
+                else
+                    continue;
 
                 if ( beta > bestVal )
                     beta = bestVal;
@@ -880,7 +933,7 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
                 originalBoard.bestMoves = tempBoard.bestMoves;
 
             // Reset tempBoard
-            tempBoard = originalBoard;
+            //tempBoard = originalBoard;
 
         }
 
@@ -2158,54 +2211,6 @@ void board::printMoveError() {
     cout << "Error: Invalid Input" << "\n";
     cout << "Type 'help' to bring up the help menu." << "\n";
     cout << "Type 'board' to see the board again." << "\n" << endl;
-
-}
-
-
-// Updates vecOfActions, representing available actions to the player, including multi-jumps
-void board::getPlayerActions( board &originalBoard, vector< tuple< tuple<int,int>, tuple<int,int> > > curVecOfJumps ) {
-
-    unordered_set< shared_ptr<piece> > possiblePieces = *( originalBoard.returnPieces() );
-    list< tuple<int,int> > *pieceActions;
-    vector< tuple< tuple<int,int>, tuple<int,int> > > tempVec;
-
-    bool multiJump;
-    board tempBoard;
-
-    // Iterate through all pieces available to perform an action
-    for ( auto iter : possiblePieces ) {
-
-        pieceActions = iter->returnActions();
-
-        // Iterate through all actions available for the piece
-        for( auto iter2 : *pieceActions ) {
-
-            // Copy originalBoard
-            tempBoard = originalBoard;
-            tempBoard.isolateBoard( iter->loc, iter2 );
-
-            // Copy actions leading to originalBoard
-            tempVec = curVecOfJumps;
-
-            // Add current action to vector
-            tempVec.push_back( make_tuple( iter->loc, iter2 ) );
-
-            // Apply action
-            multiJump = tempBoard.moveResult( iter->loc, iter2 );
-
-            if ( multiJump )
-                getPlayerActions( tempBoard, tempVec );
-            else
-                tempBoard.vecOfActions.push_back( tempVec );
-
-
-            // Copy tempBoard vector of vectors of jumps
-            //      Should have one additional vector of jumps
-            originalBoard.vecOfActions = tempBoard.vecOfActions;
-
-        }
-
-    }
 
 }
 
