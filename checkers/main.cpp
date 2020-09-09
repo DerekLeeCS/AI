@@ -3,7 +3,7 @@
 int main() {
 
     board newBoard;
-    //newBoard.specialBoard();
+    newBoard.specialBoard();
     newBoard.playGame();
     return 0;
 

@@ -403,6 +403,7 @@ board::board() {
 // Alters the initial board
 void board::specialBoard() {
 
+    /*
     // Empty Board
     for(int i=0; i<8; i++)
     {
@@ -414,6 +415,16 @@ void board::specialBoard() {
                 gameboard[i][j] = emptyPiece;
         }
     }
+    */
+
+    // Computer pruning optimal player double jump at certain depth ( 9-11 ) but not others?
+    gameboard[3][2] = gameboard[2][1];
+    gameboard[3][2]->loc = make_tuple(3,2);
+    gameboard[2][1] = emptyPiece;
+    gameboard[1][2] = gameboard[5][0];
+    gameboard[1][2]->loc = make_tuple(1,2);
+    gameboard[5][0] = emptyPiece;
+    this->redTurn = true;
 
     /*
     // Computer make double jump choice
@@ -537,7 +548,8 @@ void board::computerMove() {
             break;
 
         this->maxDepth++;
-
+        if( maxDepth == 11 )
+            break;
     }
 
     // Used to calculate time taken
@@ -785,7 +797,7 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
 
     // Updates elapsed time and returns if time limit is exceeded
     this->endTime = std::chrono::system_clock::now();
-    elapsed_seconds = this->endTime - this->startTime;
+    this->elapsed_seconds = this->endTime - this->startTime;
 
     if ( this->computerTime - elapsed_seconds.count() < REMAINING_TIME_LIMIT )
         return TIME_LIMIT_EXCEEDED;
@@ -879,10 +891,17 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
 
             if ( maxPlayer ) {
 
-                if ( bestVal <= val ) {
+                if ( bestVal < val ) {
 
                     bestVal = val;
                     newPath = true;
+
+                }
+                else if ( bestVal == val ) {
+
+                    randNum = rand()%2; // Choose randomly if two positions are equivalent
+                    if ( randNum )
+                        newPath = true;
 
                 }
                 else
@@ -903,10 +922,17 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
             }
             else {
 
-                if ( bestVal >= val ) {
+                if ( bestVal > val ) {
 
                     bestVal = val;
                     newPath = true;
+
+                }
+                else if ( bestVal == val ) {
+
+                    randNum = rand()%2; // Choose randomly if two positions are equivalent
+                    if ( randNum )
+                        newPath = true;
 
                 }
                 else
@@ -914,7 +940,7 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
 
                 if ( beta > bestVal )
                     beta = bestVal;
-                else if( beta == bestVal ) {
+                else if ( alpha == bestVal ) {
 
                     randNum = rand()%2; // Choose randomly if two positions are equivalent
                     if ( randNum )
@@ -926,14 +952,14 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
 
             }
 
-            if ( beta <= alpha )
+            if ( beta < alpha )
                 goto prune;
 
             if ( newPath )
                 originalBoard.bestMoves = tempBoard.bestMoves;
 
-            // Reset tempBoard
-            //tempBoard = originalBoard;
+            if ( beta == alpha )
+                goto prune;
 
         }
 
@@ -1141,7 +1167,7 @@ bool board::moveResult( tuple<int,int> start, tuple<int,int> destination ) {
 
     // Checks if piece is making a jump
     bool jump,tempBool;
-    jump = gameboard[oldRow][oldCol]->validJump;
+    jump = gameboard[ oldRow ][ oldCol ]->validJump;
 
     // Moves the piece pointer from original location to new location
     gameboard[ newRow ][ newCol ] = gameboard[ oldRow ][ oldCol ];
@@ -1168,6 +1194,7 @@ bool board::moveResult( tuple<int,int> start, tuple<int,int> destination ) {
 
         // Replace captured piece pointer with empty piece pointer
         gameboard[ jumpRow ][ jumpCol ] = emptyPiece;
+
     }
 
     // Checks if any diagonal pieces were affected by action taken
@@ -1232,17 +1259,17 @@ void board::checkMoves( shared_ptr<piece> &curPiece ) {
             // Checks if newRow & newCol are on the board
             if ( validLoc(newRow) && validLoc(newCol) ) {
 
-                tempPiece = gameboard[newRow][newCol];
+                tempPiece = gameboard[ newRow ][ newCol ];
 
                 // Checks if curPiece can move in the direction of rowOffset
-                if ( curPiece->validDirection(rowOffset) ) {
+                if ( curPiece->validDirection( rowOffset ) ) {
 
                     // Checks for moves
                     // Only possible if tempPiece is an empty piece
                     if ( tempPiece->type == TYPE_EMPTY_VAL ) {
 
-                        tempTuple = make_tuple(newRow,newCol);
-                        curPiece->moves.push_back(tempTuple);
+                        tempTuple = make_tuple( newRow, newCol );
+                        curPiece->moves.push_back( tempTuple );
                         canMove = true;
 
                     }
@@ -1257,7 +1284,7 @@ void board::checkMoves( shared_ptr<piece> &curPiece ) {
                         // Checks if jumpRow & jumpCol are on the board
                         if ( validLoc(jumpRow) && validLoc(jumpCol) ) {
 
-                            tempPiece = gameboard[jumpRow][jumpCol];
+                            tempPiece = gameboard[ jumpRow ][ jumpCol ];
 
                             // Jump is only possible if location after potential jump is empty
                             if ( tempPiece->type == TYPE_EMPTY_VAL ) {
