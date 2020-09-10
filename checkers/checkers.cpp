@@ -526,7 +526,7 @@ void board::computerMove() {
 
     // Iterative deepening
     while (1) {
-
+        this->maxDepth = 10;
         // Maximizing player if Red
         // Minimizing player if White
         tempScore = this->minimax( *this, 0, this->redTurn, VAL_MIN, VAL_MAX );
@@ -547,9 +547,10 @@ void board::computerMove() {
         if( terminalState( tempScore ) )
             break;
 
-        this->maxDepth++;
-        if( maxDepth == 11 )
+        if( maxDepth == 10 )
             break;
+        this->maxDepth++;
+
     }
 
     // Used to calculate time taken
@@ -561,6 +562,7 @@ void board::computerMove() {
     // Used for debugging
     if ( DEBUG_BOOL ) {
 
+        cout << "Best states: " << endl;
         // Outputs a list of actions leading to optimal state
         for( auto iter : this->bestMoves )
             cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
@@ -607,13 +609,15 @@ void board::playerMove() {
     sort( this->vecOfActions.begin(), this->vecOfActions.end(), sortVecOfVecs );
 
     bool validOption = false;
-    int i=0, option;
+    int i, option;
     string input;
 
     // While player has not selected a valid action
     while ( !validOption ) {
 
         cout << "Select an option:" << "\n";
+
+        i=0;
 
         // Iterates through sequences of actions
         for ( auto iter : this->vecOfActions ) {
@@ -807,7 +811,23 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
 
         originalBoard.heuristic();                      // Calculates score for current state
         originalBoard.bestMoves = originalBoard.moves;  // Sets bestMoves equal to moves taken to reach current state
+/*
+        auto iter = originalBoard.moves.begin();
+        iter++;
+        //cout << maxPlayer << redTurn << endl;
+        if( char(get<0>(get<0>(*iter))+97) == 'f' && get<1>(get<0>(*iter))+1 == 3 && get<0>( get<1>( *iter ) ) == 3 && get<1>( get<1>( *iter ) ) == 4  ) {
+            cout << originalBoard.score << "\n";
+            cout << "Test: " << char(get<0>(get<0>(*iter))+97) << get<1>(get<0>(*iter))+1 << endl;
+            iter++;
+            if( get<0>( get<0>( *iter ) ) == 3 && get<1>(get<0>(*iter)) == 4 ) {
 
+                // Outputs a list of actions leading to optimal state
+                for( auto iter : this->moves )
+                    cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
+                cout << "\n" << endl;
+            }
+
+        }*/
         return originalBoard.score;  // Returns score for alpha-beta pruning
 
     }
@@ -815,7 +835,7 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
     // Makes a copy of the parent board
     board tempBoard;
     unordered_set< shared_ptr<piece> > posMoves = *( originalBoard.returnPieces() );
-    list< tuple<int,int> > *possibleActions;
+    list< tuple<int,int> > possibleActions;
 
     bool multiJump,newPath;
     float val,bestVal;
@@ -836,17 +856,17 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
 
     for ( auto iter : posMoves ) {
 
-        possibleActions = iter->returnActions();
+        possibleActions = *( iter->returnActions() );
 
         // Second check for singleMove
         if ( depth == 0 ) {
 
-            if( possibleActions->size() != 1 )
+            if( possibleActions.size() != 1 )
                 singleMove = false;
 
         }
 
-        for ( auto iter2 : *possibleActions ) {
+        for ( auto iter2 : possibleActions ) {
 
             // Because board class contains pointers to pieces, copying board class copies the pointers
             // Does not make copies of pieces, so pointers will still point to original pieces
@@ -891,56 +911,66 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
 
             if ( maxPlayer ) {
 
+                // max( bestVal, val )
                 if ( bestVal < val ) {
 
                     bestVal = val;
-                    newPath = true;
+                    originalBoard.bestMoves = tempBoard.bestMoves;
 
                 }
                 else if ( bestVal == val ) {
-
-                    randNum = rand()%2; // Choose randomly if two positions are equivalent
-                    if ( randNum )
-                        newPath = true;
-
+                    if ( rand()%2 )
+                        originalBoard.bestMoves = tempBoard.bestMoves;
                 }
                 else
                     continue;
 
-                if ( alpha < bestVal )
-                    alpha = bestVal;
-                else if ( alpha == bestVal ) {
+                // Pruning
+                if ( bestVal > beta )
+                    goto prune;
+                else if ( bestVal == beta ) {
 
-                    randNum = rand()%2; // Choose randomly if two positions are equivalent
-                    if ( randNum )
-                        newPath = false;
-
+                    goto prune;
                 }
-                else
-                    newPath = false;
+
+                if ( alpha < bestVal ) {
+                    alpha = bestVal;
+                }
+
 
             }
             else {
 
+                // min( bestVal, val )
+                // If they are equal, would not matter b/c alpha-beta would return if bestVal == alpha/beta
                 if ( bestVal > val ) {
 
                     bestVal = val;
-                    newPath = true;
+                    originalBoard.bestMoves = tempBoard.bestMoves;
 
                 }
                 else if ( bestVal == val ) {
-
-                    randNum = rand()%2; // Choose randomly if two positions are equivalent
-                    if ( randNum )
-                        newPath = true;
-
+                   if ( rand()%2 )
+                        originalBoard.bestMoves = tempBoard.bestMoves;
                 }
+
                 else
                     continue;
 
+                // Pruning
+                if ( bestVal <= alpha )
+                    goto prune;
+
+
+                if ( beta > bestVal ) {
+                    beta = bestVal;
+
+                }
+
+/*
                 if ( beta > bestVal )
                     beta = bestVal;
-                else if ( alpha == bestVal ) {
+                else if ( beta == bestVal ) {
 
                     randNum = rand()%2; // Choose randomly if two positions are equivalent
                     if ( randNum )
@@ -948,18 +978,15 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
 
                 }
                 else
-                    newPath = false;
+                    newPath = false;*/
 
             }
 
-            if ( beta < alpha )
-                goto prune;
+         //   if ( beta <= alpha )
+           //     goto prune;
 
-            if ( newPath )
-                originalBoard.bestMoves = tempBoard.bestMoves;
-
-            if ( beta == alpha )
-                goto prune;
+          //  if ( newPath )
+            //    originalBoard.bestMoves = tempBoard.bestMoves;
 
         }
 
@@ -979,7 +1006,7 @@ void board::isolateBoard( tuple<int,int> start, tuple<int,int> destination ) {
     shared_ptr<piece> tempPiece;
 
     // Gets a list of potential affected pieces
-    pieceList = affectedPieces(start,destination);
+    pieceList = affectedPieces( start, destination );
 
     for ( auto iter : pieceList ) {
 

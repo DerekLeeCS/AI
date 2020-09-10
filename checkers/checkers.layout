@@ -2,9 +2,19 @@
 <CodeBlocks_layout_file>
 	<FileVersion major="1" minor="0" />
 	<ActiveTarget name="Release" />
+	<File name="checkers.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="4" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4426" topLine="112" />
+		</Cursor>
+	</File>
+	<File name="main.cpp" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="5" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="66" topLine="0" />
+		</Cursor>
+	</File>
 	<File name="checkers.cpp" open="1" top="1" tabpos="2" split="0" active="1" splitpos="0" zoom_1="6" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="25965" topLine="283" />
+			<Cursor1 position="26142" topLine="539" />
 		</Cursor>
 		<Folding>
 			<Collapse line="49" />
@@ -21,39 +31,10 @@
 			<Collapse line="268" />
 			<Collapse line="285" />
 			<Collapse line="302" />
-			<Collapse line="336" />
-			<Collapse line="403" />
-			<Collapse line="477" />
-			<Collapse line="505" />
-			<Collapse line="596" />
-			<Collapse line="692" />
-			<Collapse line="744" />
-			<Collapse line="971" />
-			<Collapse line="1018" />
-			<Collapse line="1106" />
-			<Collapse line="1158" />
-			<Collapse line="1229" />
-			<Collapse line="1328" />
-			<Collapse line="1521" />
-			<Collapse line="1678" />
-			<Collapse line="1714" />
-			<Collapse line="1726" />
-			<Collapse line="1737" />
-			<Collapse line="1756" />
-			<Collapse line="1833" />
-			<Collapse line="1869" />
-			<Collapse line="1933" />
-			<Collapse line="1977" />
+			<Collapse line="598" />
+			<Collapse line="696" />
+			<Collapse line="748" />
+			<Collapse line="1136" />
 		</Folding>
-	</File>
-	<File name="checkers.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="4" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="4948" topLine="109" />
-		</Cursor>
-	</File>
-	<File name="main.cpp" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="5" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="66" topLine="0" />
-		</Cursor>
 	</File>
 </CodeBlocks_layout_file>
