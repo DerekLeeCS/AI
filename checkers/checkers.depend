@@ -40,10 +40,10 @@
 	<windows.h>
 	<wincon.h>
 
-1599797864 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\main.cpp
+1599853511 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\main.cpp
 	"checkers.h"
 
-1599802462 d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.h
+1599858721 d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.h
 	<string>
 	<list>
 	<vector>
@@ -52,7 +52,7 @@
 	<memory>
 	<chrono>
 
-1599803585 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.cpp
+1599858721 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.cpp
 	"checkers.h"
 	<iostream>
 	<algorithm>

@@ -17,7 +17,7 @@ using std::shared_ptr;
 namespace checkersVals {
 
     // Minimax Search
-    #define REMAINING_TIME_LIMIT        0.05
+    #define REMAINING_TIME_LIMIT        0.025
     #define TIME_LIMIT_EXCEEDED         10101
     #define SINGLE_MOVE                 11111
     #define VAL_MIN                     -99999.0f
@@ -138,7 +138,7 @@ private:
     unordered_set< shared_ptr<piece> > whiteJumps;
     unordered_set< shared_ptr<piece> > multiJumps;
 
-    // Stores a vector of vectors representing a sequence of available jumps
+    // Stores a vector of vectors representing a sequence of available actions during the current turn
     vector< vector< tuple< tuple<int,int>, tuple<int,int> > > > vecOfActions;
 
     ////////// Count of pieces //////////
@@ -160,8 +160,8 @@ private:
     void playerMove();
     void endTurn();     // Series of actions to be taken at the end of a turn
 
-    // Updates vecOfActions, representing available actions to the player, including multi-jumps
-    void getPlayerActions( board &, vector< tuple< tuple<int,int>, tuple<int,int> > > );
+    // Updates vecOfActions, representing available actions for the current turn, including multi-jumps
+    void getCurTurnActions( board &, vector< tuple< tuple<int,int>, tuple<int,int> > > );
 
     // Alpha-beta pruning with iterative deepening
     tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > minimax( board &, int, bool, float, float );

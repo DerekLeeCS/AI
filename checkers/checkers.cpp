@@ -510,11 +510,6 @@ void board::computerMove() {
     // Stores bestMoves when a search to a depth has been fully completed
     list< tuple< tuple<int,int>, tuple<int,int> > > futureMoves, tempMoves;
 
-    // Resets stored moves
-    this->moves.clear();
-    this->bestMoves.clear();
-    this->vecOfActions.clear();
-
     // Variables for minimax search
     this->startTime = std::chrono::system_clock::now(); // Keeps track of elapsed time
     this->maxDepth = 1;
@@ -523,7 +518,7 @@ void board::computerMove() {
 
     // Check for single move
     vector< tuple< tuple<int,int>, tuple<int,int> > > curVecOfActions;
-    this->getPlayerActions( *this, curVecOfActions );
+    this->getCurTurnActions( *this, curVecOfActions );
 
     // Copy single move
     if ( this->vecOfActions.size() == 1 )
@@ -565,7 +560,8 @@ void board::computerMove() {
     // Used for debugging
     if ( DEBUG_BOOL ) {
 
-        cout << "Best states: " << endl;
+        cout << "Best State: " << "\n";
+
         // Outputs a list of actions leading to optimal state
         for( auto iter : this->bestMoves )
             cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
@@ -601,12 +597,9 @@ void board::computerMove() {
 // Handles player actions
 void board::playerMove() {
 
-    // Reset vector of vectors of actions
-    this->vecOfActions.clear();
-
     // Get vector of jumps
     vector< tuple< tuple<int,int>, tuple<int,int> > > curVecOfActions, vecChosenActions;
-    this->getPlayerActions( *this, curVecOfActions );
+    this->getCurTurnActions( *this, curVecOfActions );
 
     // Cleans up the vector for the player
     sort( this->vecOfActions.begin(), this->vecOfActions.end(), sortVecOfVecs );
@@ -716,6 +709,11 @@ void board::endTurn() {
 
     }
 
+    // Resets stored moves
+    this->moves.clear();
+    this->bestMoves.clear();
+    this->vecOfActions.clear();
+
     // Updates turn
     redTurn = !redTurn;
     turnCount++;
@@ -748,8 +746,8 @@ void board::endTurn() {
 }
 
 
-// Updates vecOfActions, representing available actions to the player, including multi-jumps
-void board::getPlayerActions( board &originalBoard, vector< tuple< tuple<int,int>, tuple<int,int> > > curVecOfJumps ) {
+// Updates vecOfActions, representing available actions during the current turn, including multi-jumps
+void board::getCurTurnActions( board &originalBoard, vector< tuple< tuple<int,int>, tuple<int,int> > > curVecOfJumps ) {
 
     unordered_set< shared_ptr<piece> > possiblePieces = *( originalBoard.returnPieces() );
     list< tuple<int,int> > *pieceActions;
@@ -780,7 +778,7 @@ void board::getPlayerActions( board &originalBoard, vector< tuple< tuple<int,int
             multiJump = tempBoard.moveResult( iter->loc, iter2 );
 
             if ( multiJump )
-                getPlayerActions( tempBoard, tempVec );
+                getCurTurnActions( tempBoard, tempVec );
             else
                 tempBoard.vecOfActions.push_back( tempVec );
 
@@ -812,25 +810,7 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
     // Reached max depth and starts returning from recursion
     if ( depth == originalBoard.maxDepth ) {
 
-        originalBoard.heuristic();                      // Calculates score for current state
-        //originalBoard.bestMoves = originalBoard.moves;  // Sets bestMoves equal to moves taken to reach current state
-/*
-        auto iter = originalBoard.moves.begin();
-        iter++;
-        //cout << maxPlayer << redTurn << endl;
-        if( char(get<0>(get<0>(*iter))+97) == 'f' && get<1>(get<0>(*iter))+1 == 3 && get<0>( get<1>( *iter ) ) == 3 && get<1>( get<1>( *iter ) ) == 4  ) {
-            cout << originalBoard.score << "\n";
-            cout << "Test: " << char(get<0>(get<0>(*iter))+97) << get<1>(get<0>(*iter))+1 << endl;
-            iter++;
-            if( get<0>( get<0>( *iter ) ) == 3 && get<1>(get<0>(*iter)) == 4 ) {
-
-                // Outputs a list of actions leading to optimal state
-                for( auto iter : this->moves )
-                    cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
-                cout << "\n" << endl;
-            }
-
-        }*/
+        originalBoard.heuristic();                                      // Calculates score for current state
         return make_tuple( originalBoard.score, originalBoard.moves );  // Returns score for alpha-beta pruning
 
     }
@@ -842,12 +822,11 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
 
     bool multiJump;
     tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > val, bestVal;
-    list< tuple< tuple<int,int>, tuple<int,int> > > curBestMoves;
 
     if ( maxPlayer )
-        bestVal = make_tuple( VAL_MIN, curBestMoves );
+        bestVal = make_tuple( VAL_MIN, originalBoard.moves );
     else
-        bestVal = make_tuple( VAL_MAX, curBestMoves );
+        bestVal = make_tuple( VAL_MAX, originalBoard.moves );
 
 
     for ( auto iter : posMoves ) {
@@ -884,22 +863,15 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
             // Alpha-beta Pruning
             if ( maxPlayer ) {
 
-                // max( bestVal, val )
-                if ( get<0>( bestVal ) < get<0>( val ) ) {
-
+                // Get maximum of bestVal & val
+                if ( get<0>( bestVal ) < get<0>( val ) )
                     bestVal = val;
 
-                    //curBestMoves = tempBoard.bestMoves;
-                    //cout << "Updating best \n";
-                }
                 // Randomly choose if 2 states are equivalent
                 else if ( get<0>( bestVal ) == get<0>( val ) ) {
 
-                    if ( rand() % 2 ) {
-
+                    if ( rand() % 2 )
                         bestVal = val;
-
-                    }
 
                 }
 
@@ -917,38 +889,15 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
             }
             else {
 
-                // min( bestVal, val )
-                if ( get<0>( bestVal ) > get<0>( val ) ) {
-
-                  //  if ( depth == 1 )
-                  //      cout << get<0>( bestVal ) << " " << get<0>( val ) << "\n";
+                // Get minimum of bestVal & val
+                if ( get<0>( bestVal ) > get<0>( val ) )
                     bestVal = val;
-                    /*
-                    if ( depth == 1 ) {
-                      // Outputs a list of actions leading to optimal state
-                        for( auto iter : get<1>( bestVal ) )
-                            cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
-                        cout << "\n" << endl;
-                    }*/
 
-                }
                 // Randomly choose if 2 states are equivalent
                 else if ( get<0>( bestVal ) == get<0>( val ) ) {
 
-                   if ( rand() % 2 ) {
-
-                       // if ( depth == 1 )
-                      //      cout << get<0>( bestVal ) << " " << get<0>( val ) << "\n";
+                   if ( rand() % 2 )
                         bestVal = val;
-                   /*
-                        if ( depth == 1 ) {
-                          // Outputs a list of actions leading to optimal state
-                            for( auto iter : get<1>( bestVal ) )
-                                cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
-                            cout << "\n" << endl;
-                        }*/
-
-                   }
 
                 }
 
