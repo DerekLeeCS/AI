@@ -164,7 +164,7 @@ private:
     void getPlayerActions( board &, vector< tuple< tuple<int,int>, tuple<int,int> > > );
 
     // Alpha-beta pruning with iterative deepening
-    float minimax( board &, int, bool, float, float );
+    tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > minimax( board &, int, bool, float, float );
 
     // Isolates a board for iterative deepening
     // Used in minimax

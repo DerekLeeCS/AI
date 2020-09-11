@@ -508,48 +508,51 @@ void board::computerMove() {
     cout << "Computer is thinking..." << "\n" << endl;
 
     // Stores bestMoves when a search to a depth has been fully completed
-    list< tuple< tuple<int,int>, tuple<int,int> > > futureMoves;
+    list< tuple< tuple<int,int>, tuple<int,int> > > futureMoves, tempMoves;
 
     // Resets stored moves
     this->moves.clear();
     this->bestMoves.clear();
+    this->vecOfActions.clear();
 
     // Variables for minimax search
     this->startTime = std::chrono::system_clock::now(); // Keeps track of elapsed time
     this->maxDepth = 1;
     float futureScore, tempScore = -12345;
     states = 0;
-    singleMove = true;  // Updated during minimax search
-                        // Do not need to reset to true during each iteration b/c
-                        //      If false, will remain false for all future iterations
-                        //      If true, will break out of iterative deepening
+
+    // Check for single move
+    vector< tuple< tuple<int,int>, tuple<int,int> > > curVecOfActions;
+    this->getPlayerActions( *this, curVecOfActions );
+
+    // Copy single move
+    if ( this->vecOfActions.size() == 1 )
+        std::copy( this->vecOfActions.front().begin(), this->vecOfActions.front().end(), std::back_inserter( futureMoves ) );
 
     // Iterative deepening
-    while (1) {
-        this->maxDepth = 10;
-        // Maximizing player if Red
-        // Minimizing player if White
-        tempScore = this->minimax( *this, 0, this->redTurn, VAL_MIN, VAL_MAX );
+    else {
 
-        // Stops iterative deepening if elapsed time becomes close to max time
-        if ( tempScore == TIME_LIMIT_EXCEEDED )
-            break;
+        while (1) {
 
-        // Only updates if a search was fully completed
-        futureMoves = this->bestMoves;
-        futureScore = tempScore;    // Used for debugging
+            // Maximizing player if Red
+            // Minimizing player if White
+            tie( tempScore, tempMoves ) = this->minimax( *this, 0, this->redTurn, VAL_MIN, VAL_MAX );
 
-        // If there is only one move
-        if( tempScore == SINGLE_MOVE )
-            break;
+            // Stops iterative deepening if elapsed time becomes close to max time
+            if ( tempScore == TIME_LIMIT_EXCEEDED )
+                break;
 
-        // If reached end of game
-        if( terminalState( tempScore ) )
-            break;
+            // Only updates if a search was fully completed
+            futureMoves = tempMoves;
+            futureScore = tempScore;    // Used for debugging
 
-        if( maxDepth == 10 )
-            break;
-        this->maxDepth++;
+            // If reached end of game
+            if( terminalState( tempScore ) )
+                break;
+
+            this->maxDepth++;
+
+        }
 
     }
 
@@ -794,7 +797,7 @@ void board::getPlayerActions( board &originalBoard, vector< tuple< tuple<int,int
 
 
 // Handles alpha-beta pruning minimax search
-float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alpha, float beta ) {
+tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( board &originalBoard, int depth, bool maxPlayer, float alpha, float beta ) {
 
     // Counts number of states visited (because I was curious)
     states++;
@@ -804,13 +807,13 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
     this->elapsed_seconds = this->endTime - this->startTime;
 
     if ( this->computerTime - elapsed_seconds.count() < REMAINING_TIME_LIMIT )
-        return TIME_LIMIT_EXCEEDED;
+        return make_tuple( TIME_LIMIT_EXCEEDED, originalBoard.moves );
 
     // Reached max depth and starts returning from recursion
     if ( depth == originalBoard.maxDepth ) {
 
         originalBoard.heuristic();                      // Calculates score for current state
-        originalBoard.bestMoves = originalBoard.moves;  // Sets bestMoves equal to moves taken to reach current state
+        //originalBoard.bestMoves = originalBoard.moves;  // Sets bestMoves equal to moves taken to reach current state
 /*
         auto iter = originalBoard.moves.begin();
         iter++;
@@ -828,7 +831,7 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
             }
 
         }*/
-        return originalBoard.score;  // Returns score for alpha-beta pruning
+        return make_tuple( originalBoard.score, originalBoard.moves );  // Returns score for alpha-beta pruning
 
     }
 
@@ -837,34 +840,19 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
     unordered_set< shared_ptr<piece> > posMoves = *( originalBoard.returnPieces() );
     list< tuple<int,int> > possibleActions;
 
-    bool multiJump,newPath;
-    float val,bestVal;
-    int randNum;
+    bool multiJump;
+    tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > val, bestVal;
+    list< tuple< tuple<int,int>, tuple<int,int> > > curBestMoves;
 
     if ( maxPlayer )
-        bestVal = VAL_MIN;
+        bestVal = make_tuple( VAL_MIN, curBestMoves );
     else
-        bestVal = VAL_MAX;
+        bestVal = make_tuple( VAL_MAX, curBestMoves );
 
-    // First check for singleMove
-    if ( depth == 0 ) {
-
-        if( posMoves.size() != 1 )
-            singleMove = false;
-
-    }
 
     for ( auto iter : posMoves ) {
 
         possibleActions = *( iter->returnActions() );
-
-        // Second check for singleMove
-        if ( depth == 0 ) {
-
-            if( possibleActions.size() != 1 )
-                singleMove = false;
-
-        }
 
         for ( auto iter2 : possibleActions ) {
 
@@ -880,19 +868,6 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
             tempBoard.moves.push_back( make_tuple( iter->loc, iter2 ) );
             multiJump = tempBoard.moveResult( iter->loc, iter2 );
 
-            // Final check for singleMove
-            //      Only applies if it is Depth 0 and there is no additional jump available
-            if ( depth == 0 ) {
-
-                if( singleMove && !multiJump ) {
-
-                    originalBoard.bestMoves = tempBoard.moves;
-                    return SINGLE_MOVE;
-
-                }
-
-            }
-
             if ( multiJump )
                 val = tempBoard.minimax( tempBoard, depth, maxPlayer, alpha, beta );    // Same player as now
             else {
@@ -903,90 +878,92 @@ float board::minimax( board &originalBoard, int depth, bool maxPlayer, float alp
             }
 
             // Returns from depth if the time limited is exceeded
-            if ( val == TIME_LIMIT_EXCEEDED )
+            if ( get<0>( val ) == TIME_LIMIT_EXCEEDED )
                 return val;
 
             // Alpha-beta Pruning
-            newPath = false;
-
             if ( maxPlayer ) {
 
                 // max( bestVal, val )
-                if ( bestVal < val ) {
+                if ( get<0>( bestVal ) < get<0>( val ) ) {
 
                     bestVal = val;
-                    originalBoard.bestMoves = tempBoard.bestMoves;
+
+                    //curBestMoves = tempBoard.bestMoves;
+                    //cout << "Updating best \n";
+                }
+                // Randomly choose if 2 states are equivalent
+                else if ( get<0>( bestVal ) == get<0>( val ) ) {
+
+                    if ( rand() % 2 ) {
+
+                        bestVal = val;
+
+                    }
 
                 }
-                else if ( bestVal == val ) {
-                    if ( rand()%2 )
-                        originalBoard.bestMoves = tempBoard.bestMoves;
-                }
-                else
-                    continue;
 
                 // Pruning
-                if ( bestVal > beta )
-                    goto prune;
-                else if ( bestVal == beta ) {
+                if ( get<0>( bestVal ) >= beta ) {
 
+                    bestVal = make_tuple( get<0>( bestVal )+1, get<1>( bestVal ) );
                     goto prune;
+
                 }
 
-                if ( alpha < bestVal ) {
-                    alpha = bestVal;
-                }
-
+                // Update alpha
+                alpha = max( alpha, get<0>( bestVal ) );
 
             }
             else {
 
                 // min( bestVal, val )
-                // If they are equal, would not matter b/c alpha-beta would return if bestVal == alpha/beta
-                if ( bestVal > val ) {
+                if ( get<0>( bestVal ) > get<0>( val ) ) {
 
+                  //  if ( depth == 1 )
+                  //      cout << get<0>( bestVal ) << " " << get<0>( val ) << "\n";
                     bestVal = val;
-                    originalBoard.bestMoves = tempBoard.bestMoves;
+                    /*
+                    if ( depth == 1 ) {
+                      // Outputs a list of actions leading to optimal state
+                        for( auto iter : get<1>( bestVal ) )
+                            cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
+                        cout << "\n" << endl;
+                    }*/
 
                 }
-                else if ( bestVal == val ) {
-                   if ( rand()%2 )
-                        originalBoard.bestMoves = tempBoard.bestMoves;
-                }
+                // Randomly choose if 2 states are equivalent
+                else if ( get<0>( bestVal ) == get<0>( val ) ) {
 
-                else
-                    continue;
+                   if ( rand() % 2 ) {
+
+                       // if ( depth == 1 )
+                      //      cout << get<0>( bestVal ) << " " << get<0>( val ) << "\n";
+                        bestVal = val;
+                   /*
+                        if ( depth == 1 ) {
+                          // Outputs a list of actions leading to optimal state
+                            for( auto iter : get<1>( bestVal ) )
+                                cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
+                            cout << "\n" << endl;
+                        }*/
+
+                   }
+
+                }
 
                 // Pruning
-                if ( bestVal <= alpha )
+                if ( get<0>( bestVal ) <= alpha ) {
+
+                    bestVal = make_tuple( get<0>( bestVal )-1, get<1>( bestVal ) );
                     goto prune;
 
-
-                if ( beta > bestVal ) {
-                    beta = bestVal;
-
                 }
 
-/*
-                if ( beta > bestVal )
-                    beta = bestVal;
-                else if ( beta == bestVal ) {
-
-                    randNum = rand()%2; // Choose randomly if two positions are equivalent
-                    if ( randNum )
-                        newPath = false;
-
-                }
-                else
-                    newPath = false;*/
+                // Update beta
+                beta = min( beta, get<0>( bestVal ) );
 
             }
-
-         //   if ( beta <= alpha )
-           //     goto prune;
-
-          //  if ( newPath )
-            //    originalBoard.bestMoves = tempBoard.bestMoves;
 
         }
 
@@ -1012,14 +989,14 @@ void board::isolateBoard( tuple<int,int> start, tuple<int,int> destination ) {
 
         tie( row, col ) = iter->loc;
 
-        // Deletes pointers to old pieces
+        // Deletes pointers to old piece
         iter->clearPiece(*this);
         iter->updateCount(*this,true);
 
         // Makes a copy of the piece
         gameboard[row][col] = make_shared<piece>( piece(*iter) );
 
-        // Replaces with pointers to new pieces
+        // Replaces with pointers to new piece
         if ( iter->validMove ) {
 
             if ( iter->color == COLOR_RED_VAL )
