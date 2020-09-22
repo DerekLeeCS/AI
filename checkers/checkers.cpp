@@ -3,9 +3,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
-#include <windows.h>
-#include <wincon.h>
 
+#define DEBUG_BOOL                  0   // If debugging, 1; Otherwise, 0
 
 using std::make_tuple;
 using std::get;
@@ -18,40 +17,12 @@ using std::cin;
 using std::cout;
 using std::endl;
 
-
 using namespace checkersVals;
-
-
-#define DEBUG_BOOL                  1   // If debugging, 1; Otherwise, 0
-#define FOREGROUND_CYAN		        (FOREGROUND_BLUE | FOREGROUND_GREEN)
-#define FOREGROUND_MAGENTA		    (FOREGROUND_RED | FOREGROUND_BLUE)
-#define FOREGROUND_WHITE   	        (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN)
 
 
 // Custom sorting function used to organize vectors based on the first location of the first tuple
 // Used in playerMove()
 bool sortVecOfVecs( vector< tuple< tuple<int,int>, tuple<int,int> > > &, vector< tuple< tuple<int,int>, tuple<int,int> > > & );
-
-
-///////////////////////////////////// Colored Output /////////////////////////////////////
-
-// Code from:
-// https://stackoverflow.com/questions/25559077/how-to-get-background-color-back-to-previous-color-after-use-of-std-handle
-void SetConsoleColour( WORD* Attributes, DWORD Colour ) {
-
-    CONSOLE_SCREEN_BUFFER_INFO Info;
-    HANDLE hStdout = GetStdHandle( STD_OUTPUT_HANDLE );
-    GetConsoleScreenBufferInfo( hStdout, &Info );
-    *Attributes = Info.wAttributes;
-    SetConsoleTextAttribute( hStdout, Colour );
-
-}
-
-void ResetConsoleColour( WORD Attributes ) {
-
-    SetConsoleTextAttribute( GetStdHandle(STD_OUTPUT_HANDLE), Attributes );
-
-}
 
 unsigned int states = 0;    // Used to check how many states minimax searched through
 
@@ -417,6 +388,27 @@ void board::specialBoard() {
     }
     */
 
+    // Endgame
+    for(int i=0; i<8; i++)
+    {
+        for(int j=0; j<8; j++)
+        {
+            if( (i+j) % 2 == 0 )
+                gameboard[i][j] = fillerPiece; // Filler
+            else
+                gameboard[i][j] = emptyPiece;
+        }
+    }
+
+    gameboard[6][7] = make_shared<piece>( piece(COLOR_RED_VAL,TYPE_KING_VAL) );
+    gameboard[6][7]->loc = make_tuple(6,7);
+    gameboard[7][6] = make_shared<piece>( piece(COLOR_RED_VAL,TYPE_KING_VAL) );
+    gameboard[7][6]->loc = make_tuple(7,6);
+    gameboard[0][1] = make_shared<piece>( piece(COLOR_WHITE_VAL,TYPE_KING_VAL) );
+    gameboard[0][1]->loc = make_tuple(0,1);
+
+
+    /*
     // Computer pruning optimal player double jump at certain depth ( 9-11 ) but not others?
     gameboard[3][2] = gameboard[2][1];
     gameboard[3][2]->loc = make_tuple(3,2);
@@ -425,7 +417,7 @@ void board::specialBoard() {
     gameboard[1][2]->loc = make_tuple(1,2);
     gameboard[5][0] = emptyPiece;
     this->redTurn = true;
-
+    */
     /*
     // Computer make double jump choice
     gameboard[3][0] = gameboard[1][0];
@@ -533,6 +525,19 @@ void board::computerMove() {
             // Minimizing player if White
             tie( tempScore, tempMoves ) = this->minimax( *this, 0, this->redTurn, VAL_MIN, VAL_MAX );
 
+
+            // Used for debugging
+            // Outputs a list of actions leading to the current state
+            if ( DEBUG_BOOL ) {
+
+                cout << "Depth: " << this->maxDepth << "\n"
+                     << "Score: " << tempScore << "\n";
+
+                for( auto iter : tempMoves )
+                    cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
+                cout << "\n";
+
+            }
             // Stops iterative deepening if elapsed time becomes close to max time
             if ( tempScore == TIME_LIMIT_EXCEEDED )
                 break;
@@ -555,15 +560,13 @@ void board::computerMove() {
     this->endTime = std::chrono::system_clock::now();
     this->elapsed_seconds = this->endTime - this->startTime;
 
-    this->bestMoves = futureMoves;
-
     // Used for debugging
     if ( DEBUG_BOOL ) {
 
         cout << "Best State: " << "\n";
 
         // Outputs a list of actions leading to optimal state
-        for( auto iter : this->bestMoves )
+        for( auto iter : futureMoves )
             cout << char(get<0>(get<0>(iter))+97) << get<1>(get<0>(iter))+1 << " " << char(get<0>(get<1>(iter))+97) << get<1>(get<1>(iter))+1 << "\n";
 
         cout << "Future Score: " << futureScore << "\n"
@@ -579,14 +582,16 @@ void board::computerMove() {
     //           will not loop
     while ( multiJump ) {
 
-        multiJump = this->moveResult( get<0>( this->bestMoves.front() ), get<1>( this->bestMoves.front() ) );
-        this->bestMoves.pop_front();    // Removes action that was just performed
+        multiJump = this->moveResult( get<0>( futureMoves.front() ), get<1>( futureMoves.front() ) );
+        cout << "Move taken: " << char(get<0>(get<0>( futureMoves.front() ))+97) << get<1>(get<0>(futureMoves.front()))+1 << " -> "
+             << char(get<0>(get<1>(futureMoves.front()))+97) << get<1>(get<1>(futureMoves.front()))+1 << "\n" << endl;
+        futureMoves.pop_front();    // Removes action that was just performed
         printBoard();
 
     }
 
     // Required statistics
-    cout << "Maximum Depth: " << this->maxDepth << "\n"
+    cout << "Maximum Depth: " << this->maxDepth-1 << "\n"
          << "Time Taken: " << ( this->elapsed_seconds ).count() << endl;
 
     endTurn();
@@ -711,7 +716,6 @@ void board::endTurn() {
 
     // Resets stored moves
     this->moves.clear();
-    this->bestMoves.clear();
     this->vecOfActions.clear();
 
     // Updates turn
@@ -795,6 +799,7 @@ void board::getCurTurnActions( board &originalBoard, vector< tuple< tuple<int,in
 
 
 // Handles alpha-beta pruning minimax search
+// Returns a score and a list of moves to reach the state with that score
 tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( board &originalBoard, int depth, bool maxPlayer, float alpha, float beta ) {
 
     // Counts number of states visited (because I was curious)
@@ -811,14 +816,20 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
     if ( depth == originalBoard.maxDepth ) {
 
         originalBoard.heuristic();                                      // Calculates score for current state
+        //originalBoard.printBoard();
+        //cout << whitePieces.size();
+        //auto iter = whitePieces.begin();
+        //piece tempPiece = **iter;
+        //cout << char(get<0>( tempPiece.loc )+97) << get<1>(tempPiece.loc)+1 << "\n";
+        //cout << originalBoard.score << "\n";
         return make_tuple( originalBoard.score, originalBoard.moves );  // Returns score for alpha-beta pruning
 
     }
 
     // Makes a copy of the parent board
     board tempBoard;
-    unordered_set< shared_ptr<piece> > posMoves = *( originalBoard.returnPieces() );
-    list< tuple<int,int> > possibleActions;
+    unordered_set< shared_ptr<piece> > *possibleMoves = originalBoard.returnPieces();
+    list< tuple<int,int> > *possibleActions;
 
     bool multiJump;
     tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > val, bestVal;
@@ -828,12 +839,12 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
     else
         bestVal = make_tuple( VAL_MAX, originalBoard.moves );
 
+    // Iterate through all actions
+    for ( auto iter : *possibleMoves ) {
 
-    for ( auto iter : posMoves ) {
+        possibleActions = iter->returnActions();
 
-        possibleActions = *( iter->returnActions() );
-
-        for ( auto iter2 : possibleActions ) {
+        for ( auto iter2 : *possibleActions ) {
 
             // Because board class contains pointers to pieces, copying board class copies the pointers
             // Does not make copies of pieces, so pointers will still point to original pieces
@@ -851,6 +862,7 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
                 val = tempBoard.minimax( tempBoard, depth, maxPlayer, alpha, beta );    // Same player as now
             else {
 
+                tempBoard.turnCount++;
                 tempBoard.redTurn = !(tempBoard.redTurn);
                 val = tempBoard.minimax( tempBoard, depth+1, !maxPlayer, alpha, beta ); // Switch players
 
@@ -876,12 +888,9 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
                 }
 
                 // Pruning
-                if ( get<0>( bestVal ) >= beta ) {
-
-                    bestVal = make_tuple( get<0>( bestVal )+1, get<1>( bestVal ) );
-                    goto prune;
-
-                }
+                // Returns bestVal+1 so subtree is pruned
+                if ( get<0>( bestVal ) >= beta )
+                    return make_tuple( get<0>( bestVal )+1, get<1>( bestVal ) );
 
                 // Update alpha
                 alpha = max( alpha, get<0>( bestVal ) );
@@ -902,12 +911,9 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
                 }
 
                 // Pruning
-                if ( get<0>( bestVal ) <= alpha ) {
-
-                    bestVal = make_tuple( get<0>( bestVal )-1, get<1>( bestVal ) );
-                    goto prune;
-
-                }
+                // Returns bestVal-1 so subtree is pruned
+                if ( get<0>( bestVal ) <= alpha )
+                    return make_tuple( get<0>( bestVal )-1, get<1>( bestVal ) );
 
                 // Update beta
                 beta = min( beta, get<0>( bestVal ) );
@@ -918,7 +924,6 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
 
     }
 
-prune:
     return bestVal;
 
 }
@@ -963,6 +968,11 @@ void board::isolateBoard( tuple<int,int> start, tuple<int,int> destination ) {
                 whiteJumps.insert( gameboard[row][col] );
 
         }
+
+        if ( iter->color == COLOR_RED_VAL )
+            redPieces.insert( gameboard[row][col] );
+        else
+            whitePieces.insert( gameboard[row][col] );
 
     }
 
@@ -1156,7 +1166,7 @@ bool board::moveResult( tuple<int,int> start, tuple<int,int> destination ) {
     checkDiagMoves( gameboard[ newRow ][ newCol ], start, jump );
 
     // Checks actions for piece in new location
-    checkMoves( gameboard[newRow][newCol] );
+    checkMoves( gameboard[ newRow ][ newCol ] );
 
     // Empty the multiJump set after every move
     multiJumps.clear();
@@ -1530,8 +1540,8 @@ void board::heuristic() {
 
     // Score for kings based on how close they are to enemy pieces
     //      Only awarded to the player with piece advantage
-    float whiteClosest = 0;
-    float redClosest = 0;
+    float whiteClosest = -1;
+    float redClosest = -1;
 
     // Number of kings in a double corner
     int whiteCorner = 0;
@@ -1558,9 +1568,15 @@ void board::heuristic() {
         }
         else {
 
-            // Factorial-like function that gives a smaller bonus as king gets closer to a piece
-            for ( int i=kingDistance(iter); i<=6; i++ )
-                whiteClosest += i;
+            // Adds a score corresponding to how close the farthest king is
+            whiteClosest += addKingDist( iter );
+            /*
+            if ( whiteClosest == -1 )
+                whiteClosest = addKingDist( iter );
+            else
+                whiteClosest = min( whiteClosest, addKingDist( iter ) );
+            */
+
             if ( row+col == 1 || row+col == 13 )
                 whiteCorner++;
 
@@ -1580,9 +1596,15 @@ void board::heuristic() {
         }
         else {
 
-            // Factorial-like function that gives a smaller bonus as king gets closer to a piece
-            for ( int i=kingDistance(iter); i<=6; i++ )
-                redClosest += i;
+            // Adds a score corresponding to how close the farthest king is
+            redClosest += addKingDist( iter );
+            /*
+            if ( redClosest == -1 )
+                redClosest = addKingDist( iter );
+            else
+                redClosest = min( redClosest, addKingDist( iter ) );
+            */
+
             if ( row+col == 1 || row+col == 13)
                 redCorner++;
 
@@ -1603,16 +1625,18 @@ void board::heuristic() {
 
         if ( whiteCount > redCount ) { // White advantage
 
-          whiteScore += pow( 2*(whiteCount/redCount),2 );
-          whiteScore += whiteClosest;
-          redScore += redCorner * cornerScore;
+            whiteScore += pow( 2*(whiteCount/redCount), 2 );
+            whiteScore += whiteClosest;
+            redScore += redCorner * cornerScore;
+            //whiteScore *= float( 1/ float( 1 + exp( float( -turnCount ) ) / 5 ) + 0.5 ); // Encourage winning faster
 
         }
         else if ( redCount > whiteCount ) { // Red Advantage
 
-          redScore += pow( 2*(redCount/whiteCount), 2 );
-          redScore += redClosest;
-          whiteScore += whiteCorner * cornerScore;
+            redScore += pow( 2*(redCount/whiteCount), 2 );
+            redScore += redClosest;
+            whiteScore += whiteCorner * cornerScore;
+            //redScore *= float( 1/ float( 1 + exp( float( -turnCount ) ) / 5 ) + 0.5 ); // Encourage winning faster
 
         }
         else { // Even game
@@ -1629,6 +1653,19 @@ void board::heuristic() {
 }
 
 
+float board::addKingDist( shared_ptr<piece> &curPiece ) {
+
+    float score = 0;
+
+    // Factorial-like function that gives a smaller bonus as king gets closer to a piece
+    for ( int i=kingDistance( curPiece ); i<=6; i++ )
+        score += float(i) / 2;
+
+    return score;
+
+}
+
+
 // Calculates distance of closest piece from king
 // Returns int representing how far away the closest piece is
 // Smaller int = closer
@@ -1636,7 +1673,7 @@ int board::kingDistance( shared_ptr<piece> &curPiece ) {
 
     unordered_set< shared_ptr<piece> > *pieceSet;
     int curRow,curCol,tempRow,tempCol,tempMin,rowDiff,colDiff;
-    int minDistance = 8;
+    int minDistance = 6;
 
     tie( curRow, curCol ) = curPiece->loc;
 
@@ -1652,17 +1689,17 @@ int board::kingDistance( shared_ptr<piece> &curPiece ) {
         tie( tempRow, tempCol ) = iter->loc;
         rowDiff = abs( tempRow - curRow );
         colDiff = abs( tempCol - curCol );
-        tempMin = max( rowDiff, colDiff );
-
-        if ( tempMin < minDistance )
+        //tempMin = min( rowDiff, colDiff );
+        tempMin = (rowDiff + colDiff)/2;
+        if ( minDistance > tempMin )
             minDistance = tempMin;
         // Smallest possible distance
-        if ( minDistance == 1 )
-            break;
+        if ( minDistance <= 2 )
+            return 2;
 
     }
 
-    return minDistance-1;
+    return minDistance;
 
 }
 
@@ -1690,509 +1727,6 @@ bool board::validLoc( int loc ) {
 }
 
 
-// Prints a victory message
-void board::printVictory( bool color, bool noMoves ) {
-
-    string colorText;
-
-    if ( color == COLOR_RED_VAL )
-        colorText = "Red";
-    else
-        colorText = "White";
-
-    if ( noMoves )
-        cout << "There are no remaining moves for " << colorText << "." << "\n";
-    cout << colorText << " Wins!" << endl;
-
-    exit(EXIT_SUCCESS);
-
-}
-
-
-// Prints the start menu
-void board::printStart() {
-
-    bool start = false;
-    bool validOption;
-    int option;
-
-    cout << "\n";
-    cout << "******************** Checkers ********************" << "\n" << "\n";
-    cout << "Welcome!" << "\n";
-    cout << "You play White." << "\n" << "\n";
-
-    while ( !start ) {
-
-        cout << "1 = Start" << "\n";
-        cout << "2 = Settings" << "\n";
-        cout << "3 = Quit Game" << "\n" << endl;
-
-        validOption = false;
-        option = 0;
-
-        while ( !validOption ) {
-
-            cin >> option;
-            cout << endl;
-
-            if ( validateInput() )
-                continue;
-
-            if ( 1 <= option && option <= 3 )
-                validOption = true;
-
-            if ( !validOption )
-                printError();
-
-        }
-
-        if ( option == 1 )
-            start = true;
-        else if ( option == 2 )
-            printSettings();
-        else if ( option == 3 ) {
-
-            cout << "Bye!" << endl;
-            exit( EXIT_SUCCESS );
-
-        }
-
-    }
-
-    printTimeSettings();
-
-    for ( int i=0; i<8; i++ ) {
-
-        for ( int j=0; j<8; j++ ) {
-
-            if ( gameboard[i][j]->filler == FILLER_FALSE && gameboard[i][j]->type != TYPE_EMPTY_VAL ) {
-
-                checkMoves( gameboard[i][j] );
-                gameboard[i][j]->updateCount( *this, true );
-                if( gameboard[i][j]->color == COLOR_RED_VAL )
-                    redPieces.insert(gameboard[i][j]);
-                else
-                    whitePieces.insert(gameboard[i][j]);
-
-            }
-
-        }
-
-    }
-
-    cout << "------------------- Game Begin -------------------" << "\n" << endl;
-    printBoard();
-
-}
-
-
-// Prints the settings menu
-void board::printSettings() {
-
-    bool validOption = false;
-    int option = 0;
-
-    cout << "1 = Change player settings" << "\n";
-    cout << "2 = Change starting board" << "\n";
-    cout << "3 = Back" << "\n" << endl;
-
-    while ( !validOption ) {
-
-        cin >> option;
-        cout << endl;
-
-        if ( validateInput() )
-            continue;
-
-        if ( 1 <= option && option <= 3 )
-            validOption = true;
-
-        if ( !validOption )
-            printError();
-
-    }
-
-    if ( option == 1 )
-        printPlayerSettings();
-    else if ( option == 2 )
-        printPieceSettings();
-    else if ( option == 3 )
-        return;
-
-}
-
-
-// Prints the player settings menu
-void board::printPlayerSettings() {
-
-    bool validOption;
-    int option;
-
-    while (1) {
-
-        validOption = false;
-        option = 0;
-
-        cout << "1 = Red Goes First" << "\n";
-        cout << "2 = White Goes First" << "\n";
-        cout << "3 = Player vs. Computer" << "\n";
-        cout << "4 = Computer vs. Computer" << "\n";
-        cout << "5 = Back" << "\n" << "\n";
-
-        cout << "Current Settings: ";
-        if ( redTurn )
-            cout << "1";
-        else
-            cout << "2";
-
-        cout << " & ";
-
-        if ( AIvsAI )
-            cout << "4";
-        else
-            cout << "3";
-
-        cout << "\n" << endl;
-
-        while ( !validOption ) {
-
-            cin >> option;
-            cout << endl;
-
-            if ( validateInput() )
-                continue;
-
-            if ( 1 <= option && option <= 5 )
-                validOption = true;
-
-            if ( !validOption )
-                printError();
-
-        }
-
-        if ( option == 1 )
-            redTurn = true;
-        else if ( option == 2 )
-            redTurn = false;
-        else if ( option == 3 )
-            AIvsAI = false;
-        else if ( option == 4 )
-            AIvsAI = true;
-        else if ( option == 5 )
-            return;
-
-    }
-
-}
-
-
-// Change starting board
-void board::printPieceSettings() {
-
-    bool validOption;
-    int option;
-
-    while (1) {
-
-        validOption = false;
-        option = 0;
-
-        printBoard();
-        cout << "1 = Add a piece" << "\n";
-        cout << "2 = Remove a piece" << "\n";
-        cout << "3 = Back" << "\n" << endl;
-
-        while ( !validOption ) {
-
-            cin >> option;
-            cout << endl;
-
-            if ( validateInput() )
-                continue;
-
-            if ( 1 <= option && option <= 3 )
-                validOption = true;
-
-            if ( !validOption )
-                printError();
-
-        }
-
-        if ( option == 1 )
-            printAddPiece();
-        else if ( option == 2 )
-            printRemovePiece();
-        else if ( option == 3 )
-            return;
-
-    }
-
-}
-
-
-// Handles adding a piece
-void board::printAddPiece() {
-
-    int row,col;
-    string loc;
-    bool validSq = false;
-
-    cout << "Select an empty square: " << "\n";
-    cout << "(Any square with a '.')" << "\n";
-    cout << "(Format should be ColumnRow, e.g. a1)" << "\n" << endl;
-
-    while ( !validSq ) {
-
-        cin >> loc;
-        cout << endl;
-
-        if ( validateInput() )
-            continue;
-
-        row = int(loc[0]) - 97;
-        col = loc[1] - '1';
-
-        if ( 0 <= col && col <= 7 && 0 <= row && row <= 7 ) {
-
-            if( gameboard[row][col]->filler == FILLER_FALSE && gameboard[row][col]->type == TYPE_EMPTY_VAL )
-                validSq = true;
-            else {
-
-                cout << "Error: Invalid Square" << "\n" << endl;
-                continue;
-
-            }
-
-        }
-
-        if( !validSq )
-            printError();
-
-    }
-
-    int pieceType = 0;
-    bool validType = false;
-
-    cout << "Select a piece to add: " << "\n";
-    cout << "1 = White King" << "\n";
-    cout << "2 = White Man" << "\n";
-    cout << "3 = Red King" << "\n";
-    cout << "4 = Red Man" << "\n";
-    cout << "5 = Back" << "\n" << endl;
-
-    while ( !validType ) {
-
-        cin >> pieceType;
-        cout << endl;
-
-        if ( validateInput() )
-            continue;
-
-        if ( 1 <= pieceType && pieceType <= 4 ) {
-
-            validType = true;
-            gameboard[row][col] = make_shared<piece> ( piece(pieceType<=2, pieceType%2) );
-            gameboard[row][col]->loc = make_tuple( row, col );
-
-        }
-        else if ( pieceType == 5 )
-            return;
-
-    }
-
-}
-
-
-// Handles removing a piece
-void board::printRemovePiece() {
-
-    int row,column;
-    string loc;
-    bool validSq = false;
-
-    cout << "Select an occupied square:" << "\n";
-    cout << "(Any square with a number)" << "\n";
-    cout << "(Format should be ColumnRow, e.g. b1)" << "\n" << endl;
-
-    while ( !validSq ) {
-
-        cin >> loc;
-        cout << endl;
-
-        if ( validateInput() )
-            continue;
-
-        row = int(loc[0]) - 97;
-        column = loc[1] - '1';
-
-        if ( 0 <= column && column <= 7 && 0 <= row && row <= 7 ) {
-
-            if ( gameboard[row][column]->filler == FILLER_FALSE && gameboard[row][column]->type != TYPE_EMPTY_VAL ) {
-
-                gameboard[row][column] = emptyPiece;
-                validSq = true;
-
-            }
-            else {
-
-                cout << "Error: Invalid Square" << "\n" << endl;
-                continue;
-
-            }
-
-        }
-
-        if ( !validSq )
-            printError();
-
-    }
-
-}
-
-
-// Change computing time
-void board::printTimeSettings() {
-
-    int inputTime = 0;
-
-    cout << "Please enter a valid time in seconds:" << "\n";
-    cout << "(Only a postive integer greater than or equal to 5 will be accepted)" << "\n" << endl;
-
-    while ( inputTime < 5 ) {
-
-        cin >> inputTime;
-        cout << endl;
-
-        if ( validateInput() )
-            continue;
-
-        if ( inputTime < 5 )
-            printError();
-        else
-          computerTime = inputTime;
-
-    }
-
-}
-
-
-// Prints the current board
-void board::printBoard() {
-
-    string man = "1";
-    string king = "2";
-
-    WORD Attributes = 0;
-
-    // Prints column labels
-    cout << "  " << "   ";
-    for ( int i=0; i<8; i++ ) {
-
-        SetConsoleColour(&Attributes, FOREGROUND_INTENSITY | FOREGROUND_GREEN);
-        cout << i+1 << "  ";
-        ResetConsoleColour(Attributes);
-
-    }
-
-    cout << endl;
-
-    piece tempPiece;
-
-    for ( int i=0; i<8; i++ ) {
-
-        // Prints row labels
-        SetConsoleColour( &Attributes, FOREGROUND_INTENSITY | FOREGROUND_GREEN );
-        cout << "  " << char(97+i) << "  ";
-        ResetConsoleColour( Attributes );
-
-        for ( int j=0; j<8; j++ ) {
-
-            tempPiece = *gameboard[i][j];
-            if ( tempPiece.filler == FILLER_TRUE )
-                cout << "   ";
-            else {
-
-                if ( tempPiece.type == TYPE_MAN_VAL ) { // Man
-
-                    if ( tempPiece.color == COLOR_RED_VAL ) // Red
-                        SetConsoleColour( &Attributes, FOREGROUND_INTENSITY | FOREGROUND_RED );
-                    else if ( tempPiece.color == COLOR_WHITE_VAL ) // White
-                        SetConsoleColour(&Attributes, FOREGROUND_WHITE);
-
-                    cout << man << "  ";
-
-                }
-                else if ( tempPiece.type == TYPE_KING_VAL ) { // King
-
-                    if ( tempPiece.color == COLOR_RED_VAL ) // Red
-                        SetConsoleColour( &Attributes, FOREGROUND_INTENSITY | FOREGROUND_RED );
-                    else if ( tempPiece.color == COLOR_WHITE_VAL ) // White
-                        SetConsoleColour( &Attributes, FOREGROUND_WHITE );
-
-                    cout << king << "  ";
-
-                }
-                if ( tempPiece.type == TYPE_EMPTY_VAL ) { // Empty
-
-                    SetConsoleColour( &Attributes, FOREGROUND_INTENSITY | FOREGROUND_CYAN );
-                    cout << "." << "  ";
-
-                }
-
-                ResetConsoleColour( Attributes );
-
-            }
-
-        }
-
-        cout << "\n";
-
-    }
-
-    cout << endl;
-
-}
-
-
-// Prints a list of commands available
-void board::printHelp() {
-
-    cout << "###################### Help ######################" << "\n"
-         << "Game Pieces:" << "\n"
-         << "1 = Man" << "\n"
-         << "2 = King" << "\n" << "\n";
-
-    cout << "Move Descriptions:" << "\n"
-         << "1 = Move Up Left" << "\n"
-         << "2 = Move Up Right" << "\n"
-         << "3 = Move Down Left" << "\n"
-         << "4 = Move Down Right" << "\n"
-         << "5 = Jump Up Left" << "\n"
-         << "6 = Jump Up Right" << "\n"
-         << "7 = Jump Down Left" << "\n"
-         << "8 = Jump Down Right" << "\n"
-         << "##################################################" << "\n"
-         << "\n" << endl;
-
-}
-
-
-// Prints an error message
-void board::printError() {
-
-    cout << "Error: Invalid Input" << "\n" << endl;
-
-}
-
-
-// Prints an error message with help
-void board::printMoveError() {
-
-    cout << "Error: Invalid Input" << "\n";
-    cout << "Type 'help' to bring up the help menu." << "\n";
-    cout << "Type 'board' to see the board again." << "\n" << endl;
-
-}
 
 
 // Ensures player input is a valid type

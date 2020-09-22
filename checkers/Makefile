@@ -1,8 +1,12 @@
-checkers.exe: main.o checkers.o
-	g++ -o checkers.exe main.cpp checkers.o
+checkers.exe: main.o checkers.o checkersDisplay.o
+	g++ -o checkers.exe main.o checkers.o checkersDisplay.o
 
-main.o:
-	g++ -c main.cpp
+main.o: main.cpp 
+	g++ -c main.cpp 
 
-checkers.o:
+checkers.o: checkers.cpp checkers.h
 	g++ -c checkers.cpp checkers.h
+
+checkersDisplay.o: checkersDisplay.cpp checkers.h
+	g++ -c checkersDisplay.cpp checkers.h
+

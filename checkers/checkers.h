@@ -18,8 +18,7 @@ namespace checkersVals {
 
     // Minimax Search
     #define REMAINING_TIME_LIMIT        0.025
-    #define TIME_LIMIT_EXCEEDED         10101
-    #define SINGLE_MOVE                 11111
+    #define TIME_LIMIT_EXCEEDED         11111
     #define VAL_MIN                     -99999.0f
     #define VAL_MAX                     99999.0f
 
@@ -124,9 +123,6 @@ private:
     // Stores a list of moves to get to current position
     list< tuple< tuple<int,int>, tuple<int,int> > > moves;
 
-    // Stores a list of the best moves available
-    list< tuple< tuple<int,int>, tuple<int,int> > > bestMoves;
-
     // Stores a shared_ptr to all of the pieces
     unordered_set< shared_ptr<piece> > redPieces;
     unordered_set< shared_ptr<piece> > whitePieces;
@@ -164,6 +160,7 @@ private:
     void getCurTurnActions( board &, vector< tuple< tuple<int,int>, tuple<int,int> > > );
 
     // Alpha-beta pruning with iterative deepening
+    // Returns a score and a list of moves to reach the state with that score
     tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > minimax( board &, int, bool, float, float );
 
     // Isolates a board for iterative deepening
@@ -189,8 +186,8 @@ private:
     // Updates the current score of the board
     void heuristic();
 
-    // Checks the closest enemy piece to a king
-    // Returns an int representing the number of moves needed to reach that piece
+    // Returns a score corresponding to how close a king is to an enemy piece
+    float addKingDist( shared_ptr<piece> & );
     int kingDistance( shared_ptr<piece> & );
 
     // Checks if the game is at a terminal state
