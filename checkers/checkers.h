@@ -1,3 +1,6 @@
+#ifndef HEADERFILE_H
+#define HEADERFILE_H
+
 #include <string>
 #include <list>
 #include <vector>
@@ -197,6 +200,9 @@ private:
     // If valid, returns true; otherwise, returns false
     bool validLoc( int );
 
+    // Validates user input
+    // If input is invalid, returns true; otherwise, returns false
+    bool validateInput();
 
     ////////// Display Functions //////////
 
@@ -216,7 +222,7 @@ private:
     void printError();      // Prints an error message
     void printMoveError();  // Prints a move error message
 
-    bool validateInput();       // Validates user input; if input is invalid, returns true; otherwise, returns false
-
 };
+
+#endif
 

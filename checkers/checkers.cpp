@@ -1727,8 +1727,6 @@ bool board::validLoc( int loc ) {
 }
 
 
-
-
 // Ensures player input is a valid type
 // If invalid, returns true; otherwise, returns false
 bool board::validateInput() {

@@ -36,6 +36,8 @@ void ResetConsoleColour( WORD Attributes ) {
 }
 
 
+///////////////////////////////////// Display Functions /////////////////////////////////////
+
 // Prints a victory message
 void board::printVictory( bool color, bool noMoves ) {
 
