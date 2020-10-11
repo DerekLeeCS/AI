@@ -204,6 +204,9 @@ private:
     // If input is invalid, returns true; otherwise, returns false
     bool validateInput();
 
+    // Loads a board from a file
+    void loadBoard();
+
     ////////// Display Functions //////////
 
     void printVictory( bool, bool );

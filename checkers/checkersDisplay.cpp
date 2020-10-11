@@ -1,11 +1,13 @@
 #include "checkers.h"
 #include <iostream>
+#include <fstream>
 #include <windows.h>
 #include <wincon.h>
 
 using std::cin;
 using std::cout;
 using std::endl;
+using std::ifstream;
 using std::make_shared;
 using std::make_tuple;
 
@@ -35,6 +37,72 @@ void ResetConsoleColour( WORD Attributes ) {
 
 }
 
+// Loads a board from a specified file
+void board::loadBoard() {
+
+    string fileName;
+    bool validName = false;
+
+    while ( !validName ) {
+
+        cout << "Enter the name of the file containing the board: ";
+        cin >> fileName;
+
+        if ( this->validateInput() )
+            continue;
+        else
+            validName = true;
+
+    }
+
+    ifstream input( fileName );
+    int pieceNum, row = 0, col = 0;
+    shared_ptr<piece> tempPiece;
+
+    // Load the board
+    while ( input >> pieceNum ) {
+
+        switch ( pieceNum ) {
+
+        // Empty Piece
+        case 0:
+
+            tempPiece = this->emptyPiece;
+
+        // Regular Piece
+        default:
+
+            tempPiece = make_shared<piece>( piece( pieceNum<2, pieceNum%2 ) );
+
+        }
+
+
+        // Ensure row and col are still valid
+        if ( validLoc( row ) && validLoc( col ) )
+            this->gameboard[ row ][ col ] = tempPiece;
+        else {
+
+            std::cerr << "Specified board is invalid. Current location: " << row;
+            exit( EXIT_FAILURE );
+
+        }
+
+        // Update next square
+        if ( col != 6 && col != 7 )
+            col++;
+        else {
+
+            row++;
+            if ( row % 2 )
+                col = 0;
+            else
+                col = 1;
+
+        }
+
+    }
+
+}
 
 ///////////////////////////////////// Display Functions /////////////////////////////////////
 
@@ -94,11 +162,19 @@ void board::printStart() {
 
         }
 
-        if ( option == 1 )
+        switch ( option ) {
+
+        case 1:
+
             start = true;
-        else if ( option == 2 )
+            break;
+
+        case 2:
+
             printSettings();
-        else if ( option == 3 ) {
+            break;
+
+        case 3:
 
             cout << "Bye!" << endl;
             exit( EXIT_SUCCESS );
@@ -109,6 +185,7 @@ void board::printStart() {
 
     printTimeSettings();
 
+    // Load piece counts
     for ( int i=0; i<8; i++ ) {
 
         for ( int j=0; j<8; j++ ) {
@@ -160,12 +237,23 @@ void board::printSettings() {
 
     }
 
-    if ( option == 1 )
+    switch ( option ) {
+
+    case 1:
+
         printPlayerSettings();
-    else if ( option == 2 )
+        break;
+
+    case 2:
+
         printPieceSettings();
-    else if ( option == 3 )
+        break;
+
+    case 3:
+
         return;
+
+    }
 
 }
 
@@ -218,16 +306,33 @@ void board::printPlayerSettings() {
 
         }
 
-        if ( option == 1 )
-            redTurn = true;
-        else if ( option == 2 )
-            redTurn = false;
-        else if ( option == 3 )
-            AIvsAI = false;
-        else if ( option == 4 )
-            AIvsAI = true;
-        else if ( option == 5 )
+        switch ( option ) {
+
+        case 1:
+
+            this->redTurn = true;
+            break;
+
+        case 2:
+
+            this->redTurn = false;
+            break;
+
+        case 3:
+
+            this->AIvsAI = false;
+            break;
+
+        case 4:
+
+            this->AIvsAI = true;
+            break;
+
+        case 5:
+
             return;
+
+        }
 
     }
 
@@ -246,9 +351,10 @@ void board::printPieceSettings() {
         option = 0;
 
         printBoard();
-        cout << "1 = Add a piece" << "\n";
-        cout << "2 = Remove a piece" << "\n";
-        cout << "3 = Back" << "\n" << endl;
+        cout << "1 = Add a piece" << "\n"
+             << "2 = Remove a piece" << "\n"
+             << "3 = Load a board from a file" << "\n"
+             << "4 = Back" << "\n" << endl;
 
         while ( !validOption ) {
 
@@ -258,7 +364,7 @@ void board::printPieceSettings() {
             if ( validateInput() )
                 continue;
 
-            if ( 1 <= option && option <= 3 )
+            if ( 1 <= option && option <= 4 )
                 validOption = true;
 
             if ( !validOption )
@@ -266,12 +372,28 @@ void board::printPieceSettings() {
 
         }
 
-        if ( option == 1 )
+        switch ( option ) {
+
+        case 1:
+
             printAddPiece();
-        else if ( option == 2 )
+            break;
+
+        case 2:
+
             printRemovePiece();
-        else if ( option == 3 )
+            break;
+
+        case 3:
+
+            loadBoard();
+            break;
+
+        case 4:
+
             return;
+
+        }
 
     }
 
@@ -541,4 +663,3 @@ void board::printMoveError() {
     cout << "Type 'board' to see the board again." << "\n" << endl;
 
 }
-

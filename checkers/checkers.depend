@@ -43,7 +43,7 @@
 1600727771 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\main.cpp
 	"checkers.h"
 
-1600880690 d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.h
+1602407047 d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.h
 	<string>
 	<list>
 	<vector>
@@ -52,16 +52,17 @@
 	<memory>
 	<chrono>
 
-1600819603 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.cpp
+1602407978 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkers.cpp
 	"checkers.h"
 	<iostream>
 	<algorithm>
 	<cstdlib>
 	<cmath>
 
-1600819488 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkersdisplay.cpp
+1602406745 source:d:\derek\documents\1school\cooper_union\coding\derek\public\ai\checkers\checkersdisplay.cpp
 	"checkers.h"
 	<iostream>
+	<fstream>
 	<windows.h>
 	<wincon.h>
 

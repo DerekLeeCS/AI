@@ -309,8 +309,8 @@ board::board() {
 
     // Board uses a single instance of emptyPiece and fillerPiece
     //      for all empty and filler locations in the board
-    emptyPiece = make_shared<piece> ( piece(0,TYPE_EMPTY_VAL) );
-    fillerPiece = make_shared<piece> ( piece(FILLER_TRUE) );
+    emptyPiece = make_shared<piece>( piece(0,TYPE_EMPTY_VAL) );
+    fillerPiece = make_shared<piece>( piece(FILLER_TRUE) );
 
     tuple<int,int> tempLoc;
 
@@ -328,7 +328,7 @@ board::board() {
                 if ( (i+j) % 2 ) {
 
                     // Initializes piece
-                    gameboard[i][j] = make_shared<piece> ( piece(COLOR_RED_VAL,TYPE_MAN_VAL) ); // Red Man
+                    gameboard[i][j] = make_shared<piece>( piece(COLOR_RED_VAL,TYPE_MAN_VAL) ); // Red Man
                     gameboard[i][j]->loc = tempLoc;
 
                 }
@@ -343,7 +343,7 @@ board::board() {
                 if ( (i+j) % 2 ) {
 
                     // Initializes piece
-                    gameboard[i][j] = make_shared<piece> ( piece(COLOR_WHITE_VAL,TYPE_MAN_VAL) ); // White Man
+                    gameboard[i][j] = make_shared<piece>( piece(COLOR_WHITE_VAL,TYPE_MAN_VAL) ); // White Man
                     gameboard[i][j]->loc = tempLoc;
                     //whitePieces.insert( gameboard[i][j] );
 
