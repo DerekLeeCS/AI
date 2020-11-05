@@ -166,6 +166,9 @@ private:
     // Returns a score and a list of moves to reach the state with that score
     tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > minimax( board &, int, bool, float, float );
 
+    // Returns the score at a leaf node
+    tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > returnFromLeaf( board &, int );
+
     // Isolates a board for iterative deepening
     // Used in minimax
     void isolateBoard( tuple<int,int>, tuple<int,int> );
@@ -195,6 +198,7 @@ private:
 
     // Checks if the game is at a terminal state
     bool terminalState( float );
+    bool currentTerminalState( float );
 
     // Checks if a row/column is within the board
     // If valid, returns true; otherwise, returns false

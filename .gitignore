@@ -5,3 +5,8 @@ PSET #1/Pg 5-6.pdf
 PSET #1/Pg 4.pdf
 PSET #1/Pg 5.pdf
 PSET #1/Pg 6.pdf
+checkers/bin/
+checkers/obj/
+*.o
+*.exe
+*.zip

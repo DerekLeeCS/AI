@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
+#include <random>
 
 #define DEBUG_BOOL                  0   // If debugging, 1; Otherwise, 0
 
@@ -30,6 +31,10 @@ unsigned int states = 0;    // Used to check how many states minimax searched th
 // Used during minimax search to check if there is a single move available
 bool singleMove = true;
 
+// PRNG
+static std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
+static std::uniform_int_distribution<int> randChoice(0,1);
+static std::uniform_real_distribution<float> uid(0,0.1);
 
 
 ///////////////////////////////////// Piece /////////////////////////////////////
@@ -400,13 +405,25 @@ void board::specialBoard() {
         }
     }
 
+
+    // Double Corner Bottom Right
+    gameboard[7][6] = make_shared<piece>( piece(COLOR_WHITE_VAL,TYPE_KING_VAL) );
+    gameboard[7][6]->loc = make_tuple(7,6);
+    gameboard[0][1] = make_shared<piece>( piece(COLOR_RED_VAL,TYPE_KING_VAL) );
+    gameboard[0][1]->loc = make_tuple(0,1);
+    gameboard[1][0] = make_shared<piece>( piece(COLOR_RED_VAL,TYPE_KING_VAL) );
+    gameboard[1][0]->loc = make_tuple(1,0);
+
+
+    /*
+    // Double Corner Top Left
     gameboard[6][7] = make_shared<piece>( piece(COLOR_RED_VAL,TYPE_KING_VAL) );
     gameboard[6][7]->loc = make_tuple(6,7);
     gameboard[7][6] = make_shared<piece>( piece(COLOR_RED_VAL,TYPE_KING_VAL) );
     gameboard[7][6]->loc = make_tuple(7,6);
     gameboard[0][1] = make_shared<piece>( piece(COLOR_WHITE_VAL,TYPE_KING_VAL) );
     gameboard[0][1]->loc = make_tuple(0,1);
-
+    */
 
     /*
     // Computer pruning optimal player double jump at certain depth ( 9-11 ) but not others?
@@ -497,6 +514,13 @@ void board::playGame() {
 // Handles actions for computer
 void board::computerMove() {
 
+    // Pauses the game to help AIvsAI debugging
+    if ( DEBUG_BOOL && turnCount % 10 == 0 ) {
+
+        int a;
+        cin >> a;
+
+    }
     cout << "Computer is thinking..." << "\n" << endl;
 
     // Stores bestMoves when a search to a depth has been fully completed
@@ -539,15 +563,24 @@ void board::computerMove() {
 
             }
             // Stops iterative deepening if elapsed time becomes close to max time
-            if ( tempScore == TIME_LIMIT_EXCEEDED )
+            if ( tempScore == TIME_LIMIT_EXCEEDED ) {
+
+                this->maxDepth--;
                 break;
+
+            }
 
             // Only updates if a search was fully completed
             futureMoves = tempMoves;
             futureScore = tempScore;    // Used for debugging
 
             // If reached end of game
-            if( terminalState( tempScore ) )
+            if ( currentTerminalState( tempScore ) )
+                break;
+
+            // Needed in case of endgame ( right before victory )
+            //      to prevent searching to thousands of depths
+            if ( this->maxDepth >= 20 )
                 break;
 
             this->maxDepth++;
@@ -591,7 +624,7 @@ void board::computerMove() {
     }
 
     // Required statistics
-    cout << "Maximum Depth: " << this->maxDepth-1 << "\n"
+    cout << "Maximum Depth: " << this->maxDepth << "\n"
          << "Time Taken: " << ( this->elapsed_seconds ).count() << endl;
 
     endTurn();
@@ -685,6 +718,8 @@ void board::playerMove() {
     for ( unsigned int j=0; j<vecChosenActions.size(); j++ ) {
 
         this->moveResult( get<0>( vecChosenActions[j] ), get<1>( vecChosenActions[j] ) );
+        cout << "Move taken: " << char(get<0>(get<0>( vecChosenActions[j] ))+97) << get<1>(get<0>(vecChosenActions[j]))+1 << " -> "
+             << char(get<0>(get<1>(vecChosenActions[j]))+97) << get<1>(get<1>(vecChosenActions[j]))+1 << "\n" << endl;
         this->printBoard();
 
     }
@@ -815,21 +850,27 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
     // Reached max depth and starts returning from recursion
     if ( depth == originalBoard.maxDepth ) {
 
-        originalBoard.heuristic();                                      // Calculates score for current state
         //originalBoard.printBoard();
         //cout << whitePieces.size();
         //auto iter = whitePieces.begin();
         //piece tempPiece = **iter;
         //cout << char(get<0>( tempPiece.loc )+97) << get<1>(tempPiece.loc)+1 << "\n";
         //cout << originalBoard.score << "\n";
-        return make_tuple( originalBoard.score, originalBoard.moves );  // Returns score for alpha-beta pruning
+
+        // Returns score for alpha-beta pruning
+        return returnFromLeaf( originalBoard, depth );
 
     }
 
-    // Makes a copy of the parent board
-    board tempBoard;
     unordered_set< shared_ptr<piece> > *possibleMoves = originalBoard.returnPieces();
     list< tuple<int,int> > *possibleActions;
+
+    // Return score of current board if there are no remaining moves
+    if ( possibleMoves->size() == 0 )
+        return returnFromLeaf( originalBoard, depth );
+
+    // Makes a copy of the parent board
+    board tempBoard;
 
     bool multiJump;
     tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > val, bestVal;
@@ -882,7 +923,7 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
                 // Randomly choose if 2 states are equivalent
                 else if ( get<0>( bestVal ) == get<0>( val ) ) {
 
-                    if ( rand() % 2 )
+                    if ( randChoice(rng) )
                         bestVal = val;
 
                 }
@@ -905,7 +946,7 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
                 // Randomly choose if 2 states are equivalent
                 else if ( get<0>( bestVal ) == get<0>( val ) ) {
 
-                   if ( rand() % 2 )
+                   if ( randChoice(rng) )
                         bestVal = val;
 
                 }
@@ -925,6 +966,26 @@ tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::minimax( 
     }
 
     return bestVal;
+
+}
+
+
+tuple< float, list< tuple< tuple<int,int>, tuple<int,int> > > > board::returnFromLeaf( board &originalBoard, int depth ) {
+
+    originalBoard.heuristic();
+
+    // Prolong loss
+    if ( terminalState( originalBoard.score ) ) {
+
+        // Penalize score based on depth
+        if ( originalBoard.score == VICTORY_RED_MOVE || originalBoard.score == VICTORY_RED_PIECE )
+            originalBoard.score -= depth;
+        else
+            originalBoard.score += depth;
+
+    }
+
+    return make_tuple( originalBoard.score, originalBoard.moves );
 
 }
 
@@ -1533,15 +1594,19 @@ void board::heuristic() {
     // Scores
     float whiteScore = 0;
     float redScore = 0;
-    float menValue = 30;
+    float menValue = 35;
     float kingValue = 50;
     float lastRowVal = 5;   // Favors keeping men on the last row (to block opponent's pieces)
-    float cornerScore = 50; // Additional score added for king corner pieces
+    float cornerScore = 15; // Additional score added for king corner pieces
 
     // Score for kings based on how close they are to enemy pieces
     //      Only awarded to the player with piece advantage
-    float whiteClosest = -1;
-    float redClosest = -1;
+    float whiteClosest = 0;
+    float redClosest = 0;
+
+    // Measures how far away a king is from the corner
+    float whiteCornerDist = 0;
+    float redCornerDist = 0;
 
     // Number of kings in a double corner
     int whiteCorner = 0;
@@ -1570,6 +1635,7 @@ void board::heuristic() {
 
             // Adds a score corresponding to how close the farthest king is
             whiteClosest += addKingDist( iter );
+            whiteCornerDist += kingDistance( iter );
             /*
             if ( whiteClosest == -1 )
                 whiteClosest = addKingDist( iter );
@@ -1598,6 +1664,7 @@ void board::heuristic() {
 
             // Adds a score corresponding to how close the farthest king is
             redClosest += addKingDist( iter );
+            redCornerDist += kingDistance( iter );
             /*
             if ( redClosest == -1 )
                 redClosest = addKingDist( iter );
@@ -1618,6 +1685,11 @@ void board::heuristic() {
     if ( redCount >= 8 )
         redScore += redLast * lastRowVal;
 
+    if ( whiteClosest > 10 )
+        whiteClosest += 5;
+    if ( redClosest > 10 )
+        redClosest += 5;
+
     // Favors:
     //      Fewer pieces if in the lead
     //      King getting closer to enemy pieces if in the lead
@@ -1627,7 +1699,16 @@ void board::heuristic() {
 
             whiteScore += pow( 2*(whiteCount/redCount), 2 );
             whiteScore += whiteClosest;
-            redScore += redCorner * cornerScore;
+
+            if ( redCorner && redCount <= 2 ) {
+
+                redScore += turnCount % 25;
+                redScore += redCorner * cornerScore;
+
+            }
+            else
+                redScore -= redCornerDist;
+
             //whiteScore *= float( 1/ float( 1 + exp( float( -turnCount ) ) / 5 ) + 0.5 ); // Encourage winning faster
 
         }
@@ -1635,7 +1716,17 @@ void board::heuristic() {
 
             redScore += pow( 2*(redCount/whiteCount), 2 );
             redScore += redClosest;
-            whiteScore += whiteCorner * cornerScore;
+
+            if ( whiteCorner && whiteCount <= 2 ) {
+
+                whiteScore += turnCount % 25;
+                whiteScore += whiteCorner * cornerScore;
+
+
+            }
+            else
+                whiteScore -= whiteCornerDist;
+
             //redScore *= float( 1/ float( 1 + exp( float( -turnCount ) ) / 5 ) + 0.5 ); // Encourage winning faster
 
         }
@@ -1648,6 +1739,10 @@ void board::heuristic() {
 
     }
 
+    // Add randomness to the score
+    redScore += uid(rng);
+    whiteScore += uid(rng);
+
     this->score = redScore - whiteScore;
 
 }
@@ -1657,9 +1752,34 @@ float board::addKingDist( shared_ptr<piece> &curPiece ) {
 
     float score = 0;
 
+    int oppositeColor = !curPiece->color;
+
+    // Check each corner
+    if ( ( ( gameboard[0][1]->color == oppositeColor ) && ( gameboard[0][1]->type == TYPE_KING_VAL ) )
+        || ( ( gameboard[1][0]->color == oppositeColor ) && ( gameboard[1][0]->type == TYPE_KING_VAL ) ) ) {
+
+        if ( curPiece->loc == make_tuple( 2,3 ) || curPiece->loc == make_tuple( 3,2 ) )
+            score = 5;
+        else if ( curPiece->loc == make_tuple( 0,3 ) || curPiece->loc == make_tuple( 3,0 ) )
+            score = 7.5;
+
+    }
+    if ( ( ( gameboard[6][7]->color == oppositeColor ) && ( gameboard[6][7]->type == TYPE_KING_VAL ) )
+        || ( ( gameboard[7][6]->color == oppositeColor ) && ( gameboard[7][6]->type == TYPE_KING_VAL ) ) ) {
+
+        if ( curPiece->loc == make_tuple( 4,5 ) || curPiece->loc == make_tuple( 5,4 ) )
+            score = 5;
+        else if ( get<0>(curPiece->loc) == 0 || get<1>(curPiece->loc) == 0 )
+            score = -2.5;
+        else if ( curPiece->loc == make_tuple( 4,7 ) || curPiece->loc == make_tuple( 7,4 ) )
+            score = 7.5;
+
+    }
+
+
     // Factorial-like function that gives a smaller bonus as king gets closer to a piece
     for ( int i=kingDistance( curPiece ); i<=6; i++ )
-        score += float(i) / 2;
+        score += float(i) / 16;
 
     return score;
 
@@ -1700,7 +1820,14 @@ int board::kingDistance( shared_ptr<piece> &curPiece ) {
     }
 
     return minDistance;
+/*
+    int row, col, topLeftCornerDist, bottomRightCornerDist;
+    tie( row,col ) = curPiece->loc;
+    topLeftCornerDist = min( pow( (row-1), 2 ) + pow( (col-0), 2 ), pow( (row-0), 2 ) + pow( (col-1), 2 ) );
+    bottomRightCornerDist = min( pow( (row-7), 2 ) + pow( (col-6), 2 ), pow( (row-6), 2 ) + pow( (col-7), 2 ) );
 
+    return min( topLeftCornerDist, bottomRightCornerDist );
+*/
 }
 
 
@@ -1711,6 +1838,19 @@ bool board::terminalState( float tempScore ) {
         return true;
     else
         return false;
+
+}
+
+
+// Checks if score represents a win for the current player
+bool board::currentTerminalState( float tempScore ) {
+
+    if ( this->redTurn && tempScore > 9900 )
+        return true;
+    else if ( !this->redTurn && tempScore < -9900 )
+        return true;
+
+    return false;
 
 }
 

@@ -47,6 +47,7 @@ void board::loadBoard() {
 
         cout << "Enter the name of the file containing the board: ";
         cin >> fileName;
+        cout << endl;
 
         if ( this->validateInput() )
             continue;
@@ -56,11 +57,14 @@ void board::loadBoard() {
     }
 
     ifstream input( fileName );
-    int pieceNum, row = 0, col = 0;
+    int pieceNum, row = 0, col = 1;
+    tuple<int,int> tempLoc;
     shared_ptr<piece> tempPiece;
 
     // Load the board
     while ( input >> pieceNum ) {
+
+        tempLoc = make_tuple( row, col );
 
         switch ( pieceNum ) {
 
@@ -68,11 +72,13 @@ void board::loadBoard() {
         case 0:
 
             tempPiece = this->emptyPiece;
+            break;
 
         // Regular Piece
         default:
 
-            tempPiece = make_shared<piece>( piece( pieceNum<2, pieceNum%2 ) );
+            tempPiece = make_shared<piece>( piece( pieceNum<=2, pieceNum%2 ) );
+            tempPiece->loc = tempLoc;
 
         }
 
@@ -89,7 +95,7 @@ void board::loadBoard() {
 
         // Update next square
         if ( col != 6 && col != 7 )
-            col++;
+            col += 2;
         else {
 
             row++;
@@ -109,18 +115,26 @@ void board::loadBoard() {
 // Prints a victory message
 void board::printVictory( bool color, bool noMoves ) {
 
-    string colorText;
+    string colorText, oppositeColorText;
 
-    if ( color == COLOR_RED_VAL )
+    if ( color == COLOR_RED_VAL ) {
+
         colorText = "Red";
-    else
+        oppositeColorText = "White";
+
+    }
+    else {
+
         colorText = "White";
+        oppositeColorText = "Red";
+
+    }
 
     if ( noMoves )
-        cout << "There are no remaining moves for " << colorText << "." << "\n";
+        cout << "There are no remaining moves for " << oppositeColorText << "." << "\n";
     cout << colorText << " Wins!" << endl;
 
-    exit(EXIT_SUCCESS);
+    exit( EXIT_SUCCESS );
 
 }
 
@@ -207,6 +221,10 @@ void board::printStart() {
 
     cout << "------------------- Game Begin -------------------" << "\n" << endl;
     printBoard();
+
+    this->heuristic();
+    if ( this->terminalState( this->score ) )
+        endTurn();
 
 }
 
