@@ -1636,12 +1636,6 @@ void board::heuristic() {
             // Adds a score corresponding to how close the farthest king is
             whiteClosest += addKingDist( iter );
             whiteCornerDist += kingDistance( iter );
-            /*
-            if ( whiteClosest == -1 )
-                whiteClosest = addKingDist( iter );
-            else
-                whiteClosest = min( whiteClosest, addKingDist( iter ) );
-            */
 
             if ( row+col == 1 || row+col == 13 )
                 whiteCorner++;
@@ -1665,12 +1659,6 @@ void board::heuristic() {
             // Adds a score corresponding to how close the farthest king is
             redClosest += addKingDist( iter );
             redCornerDist += kingDistance( iter );
-            /*
-            if ( redClosest == -1 )
-                redClosest = addKingDist( iter );
-            else
-                redClosest = min( redClosest, addKingDist( iter ) );
-            */
 
             if ( row+col == 1 || row+col == 13)
                 redCorner++;
@@ -1709,8 +1697,6 @@ void board::heuristic() {
             else
                 redScore -= redCornerDist;
 
-            //whiteScore *= float( 1/ float( 1 + exp( float( -turnCount ) ) / 5 ) + 0.5 ); // Encourage winning faster
-
         }
         else if ( redCount > whiteCount ) { // Red Advantage
 
@@ -1726,8 +1712,6 @@ void board::heuristic() {
             }
             else
                 whiteScore -= whiteCornerDist;
-
-            //redScore *= float( 1/ float( 1 + exp( float( -turnCount ) ) / 5 ) + 0.5 ); // Encourage winning faster
 
         }
         else { // Even game
@@ -1809,10 +1793,11 @@ int board::kingDistance( shared_ptr<piece> &curPiece ) {
         tie( tempRow, tempCol ) = iter->loc;
         rowDiff = abs( tempRow - curRow );
         colDiff = abs( tempCol - curCol );
-        //tempMin = min( rowDiff, colDiff );
         tempMin = (rowDiff + colDiff)/2;
+
         if ( minDistance > tempMin )
             minDistance = tempMin;
+
         // Smallest possible distance
         if ( minDistance <= 2 )
             return 2;
@@ -1820,14 +1805,7 @@ int board::kingDistance( shared_ptr<piece> &curPiece ) {
     }
 
     return minDistance;
-/*
-    int row, col, topLeftCornerDist, bottomRightCornerDist;
-    tie( row,col ) = curPiece->loc;
-    topLeftCornerDist = min( pow( (row-1), 2 ) + pow( (col-0), 2 ), pow( (row-0), 2 ) + pow( (col-1), 2 ) );
-    bottomRightCornerDist = min( pow( (row-7), 2 ) + pow( (col-6), 2 ), pow( (row-6), 2 ) + pow( (col-7), 2 ) );
 
-    return min( topLeftCornerDist, bottomRightCornerDist );
-*/
 }
 
 
