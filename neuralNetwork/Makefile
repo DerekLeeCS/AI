@@ -1,5 +1,5 @@
 neuralNetwork.exe: main.o neuralNetwork.o
-	g++ -o neuralNetwork.exe main.cpp neuralNetwork.o
+	g++ -o neuralNetwork.exe main.o neuralNetwork.o
 
 main.o:
 	g++ -c main.cpp

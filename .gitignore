@@ -7,6 +7,9 @@ PSET #1/Pg 5.pdf
 PSET #1/Pg 6.pdf
 checkers/bin/
 checkers/obj/
+neuralNetwork/bin/
+neuralNetwork/obj/
+*.docx
 *.o
 *.exe
 *.zip

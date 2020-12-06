@@ -25,3 +25,19 @@
 	<iomanip>
 	<cmath>
 
+1598984090 source:d:\derek\documents\1school\cooper_union\coding\derek\public\fall 2020\ai\neuralnetwork\main.cpp
+	"neuralNetwork.h"
+
+1598984377 d:\derek\documents\1school\cooper_union\coding\derek\public\fall 2020\ai\neuralnetwork\neuralnetwork.h
+	<vector>
+	<string>
+	<tuple>
+	<fstream>
+	<sstream>
+	<iostream>
+
+1598984701 source:d:\derek\documents\1school\cooper_union\coding\derek\public\fall 2020\ai\neuralnetwork\neuralnetwork.cpp
+	"neuralNetwork.h"
+	<iomanip>
+	<cmath>
+

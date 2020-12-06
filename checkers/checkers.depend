@@ -67,3 +67,22 @@
 	<windows.h>
 	<wincon.h>
 
+1604262952 source:d:\derek\documents\1school\cooper_union\coding\derek\public\fall 2020\ai\checkers\checkersdisplay.cpp
+	"checkers.h"
+	<iostream>
+	<fstream>
+	<windows.h>
+	<wincon.h>
+
+1604431457 d:\derek\documents\1school\cooper_union\coding\derek\public\fall 2020\ai\checkers\checkers.h
+	<string>
+	<list>
+	<vector>
+	<unordered_set>
+	<tuple>
+	<memory>
+	<chrono>
+
+1604535656 source:d:\derek\documents\1school\cooper_union\coding\derek\public\fall 2020\ai\checkers\main.cpp
+	"checkers.h"
+
